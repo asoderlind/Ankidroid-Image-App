@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">anki image app</string>
+    <string name="action_create">Create</string>
+    <string name="title_activity_card">Image Card</string>
+    <string name="pos_noun">Noun</string>
+    <string name="pos_adjective">Adjective</string>
+    <string name="pos_verb">Verb</string>
+    <string name="pos_preposition">Preposition</string>
+    <string name="pos_unknown">Unknown</string>
+    <string name="pos_none">Literal match</string>
+    <string name="preferred_pos">Preferred word class</string>
+    <string name="add_card">Create card</string>
+    <string name="word">Ord</string>
+    <string name="sentences">Example</string>
+    <string name="images">Images</string>
+    <string name="definition">Definition</string>
+    <string name="failed_add_card">Failed to create card</string>
+    <string name="card_added">Card has been created</string>
+    <string name="anki_needed">AnkiDroid is needed</string>
+    <string name="anki_needed_long">Ankidroid is needed to work, please download from app store and grant requested rights.</string>
+</resources>
