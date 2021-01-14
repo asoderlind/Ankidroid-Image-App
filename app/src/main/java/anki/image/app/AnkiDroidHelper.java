@@ -7,6 +7,8 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
+import android.util.Log;
 import android.util.SparseArray;
 
 import com.ichi2.anki.api.AddContentApi;
@@ -62,6 +64,7 @@ public class AnkiDroidHelper {
      * @param callbackCode The callback code to be used in onRequestPermissionsResult()
      */
     public void requestPermission(Activity callbackActivity, int callbackCode) {
+        Log.d("helper :", "requestPermission called");
         ActivityCompat.requestPermissions(callbackActivity, new String[]{READ_WRITE_PERMISSION}, callbackCode);
     }
 

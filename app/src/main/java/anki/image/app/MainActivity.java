@@ -1,7 +1,6 @@
 package anki.image.app;
 
 import androidx.appcompat.app.AppCompatActivity;
-import anki.image.app.AnkiDroidHelper;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -12,12 +11,8 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ShareCompat;
-
-import com.ichi2.anki.api.AddContentApi;
 
 public class MainActivity extends AppCompatActivity {
-
     public static final String POS_ADJECTIVE = "av.*";
     public static final String POS_ADVERB = "ab.*";
     public static final String POS_INTERJECTION = "in.*";
@@ -26,8 +21,6 @@ public class MainActivity extends AppCompatActivity {
     public static final String POS_VERB = "vb.*";
     public static final String POS_UNKNOWN = ".*";
     public static final String POS_NONE = "";
-
-    private AnkiDroidHelper mAnkiDroid;
 
     private class PosItem {
         private String mName;
@@ -84,30 +77,8 @@ public class MainActivity extends AppCompatActivity {
                 PosItem posItem = (PosItem) posSpinner.getSelectedItem();
                 intent.putExtra("in.rab.extra.pos", posItem.getId());
 
-                if (AddContentApi.getAnkiDroidPackageName(getApplicationContext()) != null) {
-                    // API available: Add deck and model if required, then add your note
-                    Log.d("Android :","API available");
-                    final AddContentApi api = new AddContentApi(getApplicationContext());
-                    long deckId = api.addNewDeck("My app name");
-                    long modelId = api.addNewBasicModel("com.something.myapp");
-                    api.addNote(modelId, deckId, new String[]{"日の出", "sunrise"}, null);
-                }
-
-                //startActivity(intent);
+                startActivity(intent);
             }
         });
-    }
-
-    /**
-     * get the deck id
-     * @return might be null if there was a problem
-     */
-    private Long getDeckId() {
-        Long did = mAnkiDroid.findDeckIdByName(AnkiDroidConfig.DECK_NAME);
-        if (did == null) {
-            did = mAnkiDroid.getApi().addNewDeck(AnkiDroidConfig.DECK_NAME);
-            mAnkiDroid.storeDeckReference(AnkiDroidConfig.DECK_NAME, did);
-        }
-        return did;
     }
 }
