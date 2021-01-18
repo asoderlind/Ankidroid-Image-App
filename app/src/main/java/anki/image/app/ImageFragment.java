@@ -7,6 +7,7 @@ import android.os.Bundle;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import android.os.Environment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -21,6 +22,8 @@ import android.widget.ProgressBar;
 import org.json.JSONArray;
 import org.json.JSONException;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Objects;
@@ -69,6 +72,9 @@ public class ImageFragment extends Fragment {
                         for (int i = 0; i < array.length(); i++) {
                             Log.d("imageFrag :", "Added: " + array.getString(i));
                             mSelected.add(array.getString(i));
+
+                            // Writing the base64 string to internal storage as image
+                            //writeImageToStorage(array.getString(i));
                         }
                     } catch (JSONException e) {
                         e.printStackTrace();
@@ -88,6 +94,31 @@ public class ImageFragment extends Fragment {
                             "text/html", "UTF-8", null);
                 }
             });
+        }
+    }
+
+    private void writeImageToStorage(String base64ImageData) {
+        FileOutputStream fos = null;
+        try {
+            if (base64ImageData != null) {
+                byte[] decodedString = android.util.Base64.decode(base64ImageData, android.util.Base64.DEFAULT);
+
+                File f = new File(Environment.getExternalStorageDirectory() + File.separator + "test.png");
+                f.mkdirs();
+                f.createNewFile();
+
+                fos = new FileOutputStream(f);
+                fos.write(decodedString);
+                fos.flush();
+                fos.close();
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (fos != null) {
+                fos = null;
+            }
         }
     }
 

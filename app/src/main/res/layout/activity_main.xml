@@ -61,12 +61,6 @@
                 android:text="@string/preferred_pos"
                 android:textAppearance="?android:attr/textAppearanceSmall" />
 
-            <Spinner
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:id="@+id/posSpinner"
-                android:layout_marginBottom="4dp" />
-
             <Button
                 android:id="@+id/button"
                 android:layout_width="wrap_content"

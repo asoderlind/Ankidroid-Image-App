@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">anki image app</string>
-    <string name="action_create">Create</string>
+    <string name="action_create">Update</string>
     <string name="title_activity_card">Image Card</string>
     <string name="pos_noun">Noun</string>
     <string name="pos_adjective">Adjective</string>
@@ -10,7 +10,7 @@
     <string name="pos_none">Literal match</string>
     <string name="preferred_pos">Preferred word class</string>
     <string name="add_card">Create card</string>
-    <string name="word">Ord</string>
+    <string name="word">Word</string>
     <string name="sentences">Example</string>
     <string name="images">Images</string>
     <string name="definition">Definition</string>
@@ -28,4 +28,5 @@
     <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="error_downloading">there was an error downloading</string>
 </resources>

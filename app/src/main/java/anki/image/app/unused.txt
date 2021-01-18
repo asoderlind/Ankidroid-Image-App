@@ -1,0 +1,82 @@
+    // Simple debugging button
+
+    Button save_button = (Button) findViewById(R.id.save_button);
+    save_button.setOnClickListener(new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            Log.d("Android :","Save button clicked");
+            downloadImageFromUrl("https://icatcare.org/app/uploads/2018/07/Thinking-of-getting-a-cat.png");
+        }
+    });
+
+    // Random Hex string
+
+    private String getRandomHexString(int numchars){
+        Random r = new Random();
+        StringBuffer sb = new StringBuffer();
+        while(sb.length() < numchars){
+            sb.append(Integer.toHexString(r.nextInt()));
+        }
+
+        return sb.toString().substring(0, numchars);
+    }
+
+    // Image downloader
+
+    public void downloadImageFromUrl(String downloadUrlOfImage){
+        Log.d(TAG,"downloadImageFromUrl() called");
+        if (isStoragePermissionGranted()){
+            // Changing filename
+            String[] fileNameSplits = downloadUrlOfImage.split("\\.");
+            int extensionIndex = fileNameSplits.length - 1;
+
+            String filename = getRandomHexString(8) + "." + fileNameSplits[extensionIndex];
+            Log.d(TAG,"new filemname: " + filename);
+
+            File sdCard = Environment.getExternalStorageDirectory();
+            String folder = sdCard.getAbsolutePath();
+            File dir = new File(folder);
+            Log.d(TAG,"Folder: " + dir);
+
+            if (!dir.exists()) {
+                if (dir.mkdirs()) {
+                    Log.i(TAG,"Directory  Created");
+                }
+            }
+
+            DownloadManager dm = (DownloadManager) getApplicationContext().getSystemService(Context.DOWNLOAD_SERVICE);
+            Uri downloadUri = Uri.parse(downloadUrlOfImage);
+            DownloadManager.Request request = new DownloadManager.Request(downloadUri);
+            request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI | DownloadManager.Request.NETWORK_MOBILE)
+                    .setAllowedOverRoaming(false)
+                    .setTitle(filename)
+                    .setMimeType("image/jpeg")
+                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    .setDestinationInExternalFilesDir(this, null, File.separator + filename);
+
+            dm.enqueue(request);
+        } else {
+            Log.d("Android :","Storage permission missing");
+        }
+    }
+
+    // Storage permission check
+
+    public boolean isStoragePermissionGranted() {
+        String TAG = "Storage Permission";
+        if (Build.VERSION.SDK_INT >= 23) {
+            if (this.checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_GRANTED) {
+                Log.v(TAG, "Permission is granted");
+                return true;
+            } else {
+                Log.v(TAG, "Permission is revoked");
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+                return false;
+            }
+        }
+        else { //permission is automatically granted on sdk<23 upon installation
+            Log.v(TAG,"Permission is granted");
+            return true;
+        }
+    }
