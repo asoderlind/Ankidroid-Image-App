@@ -43,7 +43,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:labelFor="@+id/wordEdit"
-                android:text="@string/word"
+                android:text="@string/appendix"
                 android:textAppearance="?android:attr/textAppearanceSmall" />
 
             <EditText
@@ -57,16 +57,52 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:labelFor="@+id/posSpinner"
-                android:text="@string/preferred_pos"
+                android:labelFor="@+id/deckSpinner"
+                android:text="@string/deck_name"
                 android:textAppearance="?android:attr/textAppearanceSmall" />
 
-            <Button
-                android:id="@+id/button"
+            <Spinner
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/deckSpinner"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/add_card"
-                android:layout_gravity="right" />
+                android:labelFor="@+id/deckSpinner"
+                android:text="@string/model_name"
+                android:textAppearance="?android:attr/textAppearanceSmall" />
+
+            <Spinner
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/modelSpinner"
+                android:layout_marginBottom="4dp" />
+
+            <Button
+                android:id="@+id/button_empty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="100dp"
+                android:layout_marginVertical="10dp"
+                android:text="@string/empty_image_cards"/>
+
+            <Button
+                android:id="@+id/button_marked"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="100dp"
+                android:layout_marginVertical="10dp"
+                android:text="@string/marked_cards"/>
+
+            <Button
+                android:id="@+id/button_auto_cards"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="100dp"
+                android:layout_marginVertical="10dp"
+                android:text="@string/auto_cards"/>
         </LinearLayout>
     </RelativeLayout>
 

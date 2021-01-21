@@ -80,3 +80,33 @@
             return true;
         }
     }
+
+    // this path corresponds to the local storage for app files of this app
+    //File path = new File(String.valueOf(getApplicationContext().getExternalFilesDir(null)),"2bd05276.png");
+
+    //write file
+
+    private void writeImageToStorage(String base64ImageData) {
+        FileOutputStream fos = null;
+        try {
+            if (base64ImageData != null) {
+                byte[] decodedString = android.util.Base64.decode(base64ImageData, android.util.Base64.DEFAULT);
+
+                File f = new File(Environment.getExternalStorageDirectory() + File.separator + "test.png");
+                f.mkdirs();
+                f.createNewFile();
+
+                fos = new FileOutputStream(f);
+                fos.write(decodedString);
+                fos.flush();
+                fos.close();
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (fos != null) {
+                fos = null;
+            }
+        }
+    }
