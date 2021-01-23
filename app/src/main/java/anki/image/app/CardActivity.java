@@ -12,11 +12,13 @@ import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentPagerAdapter;
+import androidx.preference.PreferenceManager;
 import androidx.viewpager.widget.ViewPager;
 
 import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -33,7 +35,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.Set;
 
 import static android.media.MediaScannerConnection.*;
@@ -43,12 +44,11 @@ public class CardActivity extends AppCompatActivity implements ActivityCompat.On
     private static final String TAG = "CardActivity : ";
     private ImageFragment mImageFragment;
 
-    // Ankidroid variables
     private AddContentApi mApi;
     private AnkiDroidHelper mAnkiDroid;
-    private static final int AD_PERM_REQUEST = 0;
 
-    // Storage Permissions
+    // Permissios
+    private static final int ANKIDROID_PERM_REQUEST = 0;
     private static final int REQUEST_EXTERNAL_STORAGE = 1;
     private static final String[] PERMISSIONS_STORAGE = {
             Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -59,7 +59,7 @@ public class CardActivity extends AppCompatActivity implements ActivityCompat.On
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
-        if (requestCode==AD_PERM_REQUEST && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        if (requestCode== ANKIDROID_PERM_REQUEST && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             finishCreate();
         } else {
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -83,6 +83,7 @@ public class CardActivity extends AppCompatActivity implements ActivityCompat.On
         mAnkiDroid = new AnkiDroidHelper(this);
         Intent intent = getIntent();
 
+        // Get passed values
         String word = intent.getStringExtra("word");
         String appendix = intent.getStringExtra("searchAppendix");
         String translation =  intent.getStringExtra("translation");
@@ -98,7 +99,7 @@ public class CardActivity extends AppCompatActivity implements ActivityCompat.On
         // Permissions
         verifyStoragePermissions(this);
         if (mAnkiDroid.shouldRequestPermission()) {
-            mAnkiDroid.requestPermission(CardActivity.this, AD_PERM_REQUEST);
+            mAnkiDroid.requestPermission(CardActivity.this, ANKIDROID_PERM_REQUEST);
         } else {
             finishCreate();
         }
@@ -158,7 +159,7 @@ public class CardActivity extends AppCompatActivity implements ActivityCompat.On
         Toolbar myToolbar = findViewById(R.id.my_toolbar);
         setSupportActionBar(myToolbar);
 
-        //Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true); // Back button does not work
+        //Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true); //TODO: fix back button
 
         ViewPager viewPager = findViewById(R.id.pager);
         assert viewPager != null;
@@ -172,7 +173,7 @@ public class CardActivity extends AppCompatActivity implements ActivityCompat.On
 
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.menu_main, menu);
+        inflater.inflate(R.menu.menu_activity, menu);
         return true;
     }
 
@@ -239,6 +240,19 @@ public class CardActivity extends AppCompatActivity implements ActivityCompat.On
             Log.d(TAG, "Tags: " + String.valueOf(tags));
             tags.remove("marked");
 
+            // Remove card from set of key and save
+            String key = "markedCards";
+            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+            Set<String> nidSet = sharedPref.getStringSet(key, null);
+            if (nidSet.remove(this.getIntent().getStringExtra("noteId") + "," + this.getIntent().getStringExtra("modelId"))){
+                Log.d(TAG, "removed word from markedCards set successfully");
+                SharedPreferences.Editor editor = sharedPref.edit();
+                editor.putStringSet(key, nidSet);
+                editor.apply();
+            } else {
+                Log.d(TAG, "word was not found in markedCards set");
+            }
+
             Log.d(TAG, "fields: " + Arrays.toString(fields)); // print fields
 
             boolean updateSucceed = mApi.updateNoteFields(id,fields);
@@ -250,7 +264,9 @@ public class CardActivity extends AppCompatActivity implements ActivityCompat.On
         } else {
             Log.d(TAG, "The file downloader failed (null returned)");
         }
-
+        // if there are nids left in the shared set
+        // create another instance continue
+        // else finish the activity
         finish();
     }
 
@@ -263,6 +279,11 @@ public class CardActivity extends AppCompatActivity implements ActivityCompat.On
         return super.onOptionsItemSelected(item);
     }
 
+    /**
+     * Saved the file with the given content URI
+     * @param url the content-URI url of the image
+     * @return the path that the file was saved at
+     */
     public String createAndSaveFileFromBase64Url(String url) {
         //File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS); // save in public external dir
         File path = getApplicationContext().getExternalFilesDir(null);
