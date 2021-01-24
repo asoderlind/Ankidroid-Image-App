@@ -39,40 +39,13 @@ import java.util.Set;
 
 import static android.media.MediaScannerConnection.*;
 
-
-public class CardActivity extends AppCompatActivity implements ActivityCompat.OnRequestPermissionsResultCallback{
+public class CardActivity extends AppCompatActivity {
     private static final String TAG = "CardActivity : ";
     private ImageFragment mImageFragment;
 
     private AddContentApi mApi;
     private AnkiDroidHelper mAnkiDroid;
 
-    // Permissios
-    private static final int ANKIDROID_PERM_REQUEST = 0;
-    private static final int REQUEST_EXTERNAL_STORAGE = 1;
-    private static final String[] PERMISSIONS_STORAGE = {
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
-    };
-
-    /** Runs finish if the permission check failed, otherwise finishCreate */
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
-        if (requestCode== ANKIDROID_PERM_REQUEST && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            finishCreate();
-        } else {
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            AlertDialog dialog = builder.setTitle(R.string.anki_needed)
-                    .setMessage(R.string.anki_needed_long)
-                    .setPositiveButton("OK", (dialog1, which) -> finish())
-                    .create();
-
-            dialog.setOnDismissListener(dialog12 -> finish());
-
-            dialog.show();
-        }
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,39 +63,28 @@ public class CardActivity extends AppCompatActivity implements ActivityCompat.On
 
         if (word == null) {
             finish();
-            return;
         } else {
             setTitle(word + appendix + ", " + translation);
             mImageFragment = ImageFragment.newInstance(word, appendix);
         }
 
-        // Permissions
-        verifyStoragePermissions(this);
-        if (mAnkiDroid.shouldRequestPermission()) {
-            mAnkiDroid.requestPermission(CardActivity.this, ANKIDROID_PERM_REQUEST);
-        } else {
-            finishCreate();
-        }
-    }
+        setContentView(R.layout.activity_card); // Set our view to activity_card.xml
 
-    /**
-     * Checks if the app has permission to write to device storage
-     *
-     * If the app does not has permission then the user will be prompted to grant permissions
-     *
-     * @param activity
-     */
-    public static void verifyStoragePermissions(Activity activity) {
-        // Check if we have write permission
-        int permission = ActivityCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        if (permission != PackageManager.PERMISSION_GRANTED) {
-            // We don't have permission so prompt the user
-            ActivityCompat.requestPermissions(
-                    activity,
-                    PERMISSIONS_STORAGE,
-                    REQUEST_EXTERNAL_STORAGE
-            );
-        }
+        Toolbar myToolbar = findViewById(R.id.my_toolbar);
+        setSupportActionBar(myToolbar);
+
+        //Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true); //TODO: fix back button
+
+        // Setup view pager
+        ViewPager viewPager = findViewById(R.id.pager);
+        if (viewPager == null) throw new AssertionError();
+        viewPager.setOffscreenPageLimit(10);
+        viewPager.setAdapter(new CardFragmentPagerAdapter(getSupportFragmentManager()));
+
+        // setup tab layout
+        TabLayout tabLayout = findViewById(R.id.tablayout);
+        if (tabLayout == null) throw new AssertionError();
+        tabLayout.setupWithViewPager(viewPager);
     }
 
     /* Adapter where you input how many pages of fragments you want and the title etc. */
@@ -141,6 +103,7 @@ public class CardActivity extends AppCompatActivity implements ActivityCompat.On
 
         @Override
         public int getCount() {
+
             return 1;
         }
 
@@ -151,24 +114,6 @@ public class CardActivity extends AppCompatActivity implements ActivityCompat.On
             }
             return null;
         }
-    }
-
-    private void finishCreate() {
-        setContentView(R.layout.activity_card); // Set our view to activity_card.xml
-
-        Toolbar myToolbar = findViewById(R.id.my_toolbar);
-        setSupportActionBar(myToolbar);
-
-        //Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true); //TODO: fix back button
-
-        ViewPager viewPager = findViewById(R.id.pager);
-        assert viewPager != null;
-        viewPager.setOffscreenPageLimit(10);
-        viewPager.setAdapter(new CardFragmentPagerAdapter(getSupportFragmentManager()));
-
-        TabLayout tabLayout = findViewById(R.id.tablayout);
-        assert tabLayout != null;
-        tabLayout.setupWithViewPager(viewPager);
     }
 
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -226,7 +171,6 @@ public class CardActivity extends AppCompatActivity implements ActivityCompat.On
             String[] fieldNames = mApi.getFieldList(modelId);
             Set<String> tags = mApi.getNote(id).getTags();
 
-
             // Change image field
             for(int i=0; i<fieldNames.length; i++){
                 // Case for image
@@ -236,21 +180,26 @@ public class CardActivity extends AppCompatActivity implements ActivityCompat.On
                 }
             }
 
-            // Remove marked from tags
-            Log.d(TAG, "Tags: " + String.valueOf(tags));
-            tags.remove("marked");
+            // Remove tag from card
+            String tag = "marked";
+            Log.d(TAG, "Tags: " + tags);
+            if (tags.remove(tag)) {
+                Log.d(TAG, "removed " + tag + " tag successfully");
+            } else {
+                Log.d(TAG, "Failed to remove " + tag + " from card");
+            }
 
-            // Remove card from set of key and save
-            String key = "markedCards";
+            // Remove card from saved data
+            String key = this.getIntent().getStringExtra("prefKey");
             SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
             Set<String> nidSet = sharedPref.getStringSet(key, null);
             if (nidSet.remove(this.getIntent().getStringExtra("noteId") + "," + this.getIntent().getStringExtra("modelId"))){
-                Log.d(TAG, "removed word from markedCards set successfully");
+                Log.d(TAG, "removed word from " + key + " set successfully");
                 SharedPreferences.Editor editor = sharedPref.edit();
                 editor.putStringSet(key, nidSet);
                 editor.apply();
             } else {
-                Log.d(TAG, "word was not found in markedCards set");
+                Log.d(TAG, "word was not found in " + key + " set");
             }
 
             Log.d(TAG, "fields: " + Arrays.toString(fields)); // print fields
@@ -264,9 +213,7 @@ public class CardActivity extends AppCompatActivity implements ActivityCompat.On
         } else {
             Log.d(TAG, "The file downloader failed (null returned)");
         }
-        // if there are nids left in the shared set
-        // create another instance continue
-        // else finish the activity
+        //TODO: maybe not finish if there are still saved nids
         finish();
     }
 

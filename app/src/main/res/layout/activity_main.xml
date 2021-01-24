@@ -103,6 +103,14 @@
                 android:layout_marginHorizontal="100dp"
                 android:layout_marginVertical="10dp"
                 android:text="@string/auto_cards"/>
+
+            <Button
+                android:id="@+id/clear_save"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="100dp"
+                android:layout_marginVertical="10dp"
+                android:text="@string/clear_save"/>
         </LinearLayout>
     </RelativeLayout>
 

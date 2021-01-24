@@ -8,7 +8,7 @@
     <string name="failed_add_card">Failed to update card</string>
     <string name="card_updated">Card has been updated</string>
     <string name="anki_needed">AnkiDroid is needed</string>
-    <string name="anki_needed_long">Ankidroid is needed to work, please download from app store and grant requested rights.</string>
+    <string name="anki_needed_long">Ankidroid permissions and storage permissions are needed to work, please download from app store and grant requested rights.</string>
     <!-- Strings used for fragments for navigation -->
     <string name="first_fragment_label">First Fragment</string>
     <string name="second_fragment_label">Second Fragment</string>
@@ -28,4 +28,5 @@
     <string name="failed_change_tag">Failed to update the tags</string>
     <string name="tag_updated">Updated the tags</string>
     <string name="auto_cards">Auto gen cards</string>
+    <string name="clear_save">Clear saved data</string>
 </resources>
