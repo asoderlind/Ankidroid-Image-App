@@ -1,7 +1,6 @@
 package anki.image.app;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.content.res.AssetManager;
 import android.os.Bundle;
 
@@ -13,12 +12,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
-import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
-import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -137,7 +134,6 @@ public class ImageFragment extends Fragment {
         });
 
         mWebView.addJavascriptInterface(new WcmJsObject(), "wcm");
-        mTargetUrl = "https://www.google.co.in/search?q="  + getWord() + getAppendix() + "&source=lnms&tbm=isch";
         mTargetUrl = "https://www.google.co.in/search?q="  + getWord() + getAppendix() + "&source=lnms&tbm=isch";
         mWebView.loadUrl(mTargetUrl);
     }

@@ -5,8 +5,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.ContentResolver;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -16,10 +16,12 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.widget.Toolbar;
@@ -42,7 +44,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
     private EditText wordEdit;
     private AddContentApi mApi;
     private AnkiDroidHelper mAnkiDroid;
-    private String[] keys = {"emptyImageCards", "markedCards", "autoCards"};
+    private final String[] keys = {"emptyImageCards", "markedCards", "autoCards"};
     private int jap_word_index;
     private int eng_word_index;
     private static final int ANKIDROID_PERM_REQUEST = 0;
@@ -123,6 +125,20 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         Log.d(TAG,"eng_word_index" + eng_word_index);
         logSavedData("markedCards");
         logSavedData("emptyImageCards");
+        updateCardCountText("markedCards");
+        updateCardCountText("emptyImageCards");
+    }
+
+    private void updateCardCountText(String key) {
+        Log.d(TAG, "Logging all saved cards for " + key);
+        SharedPreferences sharedPref = getSharedPreferences(key, MODE_PRIVATE);
+        Set<String> nidSet = sharedPref.getStringSet(key, null);
+        if (nidSet != null){
+            TextView text = (key.equals("emptyImageCards")) ? findViewById(R.id.empty_count) : findViewById(R.id.marked_count); // get the button
+            String prefix = (key.equals("emptyImageCards")) ? "Empty cards: " : "Marked Cards: ";
+            String dispText = prefix + nidSet.size();
+            text.setText(dispText);
+        }
     }
 
     // create an action bar options button
@@ -154,7 +170,6 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
             String[] emptyImageArray = getWord(prefKey);
             if (emptyImageArray != null){
                 Intent intent = new Intent(MainActivity.this, CardActivity.class);
-
                 String[] fields = mApi.getNote(Long.parseLong(emptyImageArray[0])).getFields(); // Get field contents
                 intent.putExtra("fields", fields); // Add field contents
                 intent.putExtra("prefKey",prefKey); // Add prefKey
@@ -177,18 +192,14 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
             Log.d(TAG,"Clear Button clicked");
             new AlertDialog.Builder(MainActivity.this)
                     .setTitle("Erasing local data").setMessage("Are you sure you want to erase all saved lists? (this will force an re-check")
-                    .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            deleteSharedPreferences();
-                        }
-                    }).setNegativeButton("No", null).show();
+                    .setPositiveButton("Yes", (dialog, which) -> deleteSharedPreferences()).setNegativeButton("No", null).show();
         });
     }
 
     private void deleteSharedPreferences(){
         Log.d(TAG, "Deleting sharedPrefs 'boardConfig'...");
         for (String s : keys){
+            Log.d(TAG,"Deleting data for " + s);
             SharedPreferences sharedPref = getSharedPreferences(s, MODE_PRIVATE);
             SharedPreferences.Editor editor = sharedPref.edit();
             editor.clear();
@@ -200,12 +211,45 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
     // Get deck or model list and put the names into the spinner
     private void initSpinner(int id){
         final Spinner posSpinner = findViewById(id);
+        // Set the spinner values
         Map<Long, String> map = (id == R.id.deckSpinner) ? mApi.getDeckList() : mApi.getModelList();
         Collection<String> values = map.values();
-        String[] array = values.toArray(new String[values.size()]);
+        String[] array = values.toArray(new String[0]);
         ArrayAdapter<CharSequence> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, array);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         posSpinner.setAdapter(adapter);
+        posSpinner.setSelection(getPersistedItem(id));
+        // Set the spinner to save state
+        posSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parentView, View view, int position, long itemId) {
+                setPersistedItem(position, id);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> arg0) {
+
+            }
+        });
+    }
+
+    private int getPersistedItem(int id) {
+        Log.d(TAG, "Getting spinner selection");
+        if (id == R.id.deckSpinner){
+            return PreferenceManager.getDefaultSharedPreferences(this).getInt("deckSelection", 0);
+        } else {
+            return PreferenceManager.getDefaultSharedPreferences(this).getInt("modelSelection", 0);
+        }
+    }
+
+    @SuppressLint("ApplySharedPref")
+    protected void setPersistedItem(int position, int id) {
+        Log.d(TAG, "Setting spinner selection");
+        if (id == R.id.deckSpinner){
+            PreferenceManager.getDefaultSharedPreferences(this).edit().putInt("deckSelection", position).commit();
+        } else {
+            PreferenceManager.getDefaultSharedPreferences(this).edit().putInt("modelSelection", position).commit();
+        }
     }
 
     private String getKey(int button_id){
@@ -227,8 +271,6 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
      */
     private String[] getWord(String prefKey) {
         ContentResolver cr = this.getContentResolver();
-
-        //TODO: save spinner choices between startups
         Spinner deckSpinner = findViewById(R.id.deckSpinner);
         Spinner modelSpinner = findViewById(R.id.modelSpinner);
         String deckName = (String) deckSpinner.getSelectedItem(); // Get selected deck name
@@ -244,7 +286,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
                     return savedCard;
                 }
                 Log.d(TAG, "No save data, querying all cards in deck " + deckName);
-                cardsCursor = cr.query(FlashCardsContract.Note.CONTENT_URI, null, "deck:\"" + deckName + "\"", null, null); // alt: "deck:\"" + deckName + "\"" + " note:\"" + modelName + "\""
+                cardsCursor = cr.query(FlashCardsContract.Note.CONTENT_URI, null, "deck:\"" + deckName + "\"" + " note:\"" + modelName + "\"", null, null); // alt: "deck:\"" + deckName + "\""
 
                 if (cardsCursor != null) {
                     Log.d(TAG, "Count: " + cardsCursor.getCount());
@@ -302,7 +344,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
 
     private void saveAllQueriedCards(Cursor cardsCursor, String prefKey){
         Log.d(TAG, "Saving all queried cards...");
-        Set<String> nidSet = new HashSet<String>();
+        Set<String> nidSet = new HashSet<>();
         // Iterate over all matching queries
         for (int i = 0; i < cardsCursor.getCount(); i++){
             cardsCursor.moveToPosition(i);
@@ -313,7 +355,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         Log.d(TAG, "Total nidset: " + nidSet);
 
         // Save nids to shared
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        SharedPreferences sharedPref = getSharedPreferences(prefKey, MODE_PRIVATE);
         Log.d(TAG, "saving data to key " + prefKey);
         SharedPreferences.Editor editor = sharedPref.edit();
         editor.putStringSet(prefKey, nidSet);
@@ -336,7 +378,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         Log.d(TAG, "Total nidset: " + nidSet);
 
         // Save nids to shared
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        SharedPreferences sharedPref = getSharedPreferences(prefKey, MODE_PRIVATE);
         Log.d(TAG, "saving data to key " + prefKey);
         SharedPreferences.Editor editor = sharedPref.edit();
         editor.putStringSet(prefKey, nidSet);
@@ -344,7 +386,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
     }
 
     public String[] getSavedCard(String prefKey){
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        SharedPreferences sharedPref = getSharedPreferences(prefKey, MODE_PRIVATE);
         Set<String> nidSet = sharedPref.getStringSet(prefKey, null);
         if (nidSet != null){
             if (nidSet.size() != 0){
@@ -390,7 +432,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
 
     public void logSavedData(String key){
         Log.d(TAG, "Logging all saved cards for " + key);
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        SharedPreferences sharedPref = getSharedPreferences(key, MODE_PRIVATE);
         Set<String> nidSet = sharedPref.getStringSet(key, null);
         if (nidSet != null) {
             for (String aNid : nidSet) {

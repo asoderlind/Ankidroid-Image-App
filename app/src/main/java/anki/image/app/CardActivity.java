@@ -3,23 +3,16 @@ package anki.image.app;
 import com.google.android.material.tabs.TabLayout;
 import com.ichi2.anki.api.AddContentApi;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentPagerAdapter;
-import androidx.preference.PreferenceManager;
 import androidx.viewpager.widget.ViewPager;
 
-import android.Manifest;
-import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Base64;
@@ -96,14 +89,14 @@ public class CardActivity extends AppCompatActivity {
         @Override
         public Fragment getItem(int position) {
             if (position == 0) {
-                return mImageFragment;
+                return mImageFragment; // TODO: add other fragments
+            } else {
+                return null;
             }
-            return null;
         }
 
         @Override
         public int getCount() {
-
             return 1;
         }
 
@@ -122,17 +115,11 @@ public class CardActivity extends AppCompatActivity {
         return true;
     }
 
-    private String downloadImageToAnki(){
-        // Images from js-script
-        ArrayList<String> images = mImageFragment.getSelected();
-        Log.d(TAG, "images: " + images);
+    private String downloadImageToAnki(String base64Url){
 
-        // save base64 encoded image of first element
-        String returned_save_path = "";
-        if (images.size() > 0){
-            returned_save_path = createAndSaveFileFromBase64Url(images.get(0)); // TODO: allow for multiple images
-            Log.d(TAG, "return from create and savefile: " + returned_save_path);
-        }
+        // save base64 encoded image
+        String returned_save_path = createAndSaveFileFromBase64Url(base64Url);
+        Log.d(TAG, "return from create and savefile: " + returned_save_path);
 
         // Get the file path for the saved file
         File path = new File(returned_save_path, "");
@@ -159,9 +146,18 @@ public class CardActivity extends AppCompatActivity {
 
     private void updateCard() {
         Log.d(TAG, "updateCard() called");
-        String addedImageFileName = downloadImageToAnki();
 
-        if (addedImageFileName != null){
+        // Images from js-script
+        ArrayList<String> images = mImageFragment.getSelected();
+        Log.d(TAG, "images: " + images);
+
+        // List of image field content
+        ArrayList<String> addedImageFileNames = new ArrayList<>();
+        for (String base64Url : images){
+            addedImageFileNames.add(downloadImageToAnki(base64Url));
+        }
+
+        if (addedImageFileNames.size() > 0){
             // Variables from intent
             long id = Long.parseLong(this.getIntent().getStringExtra("noteId"));
             long modelId = Long.parseLong(this.getIntent().getStringExtra("modelId"));
@@ -175,8 +171,11 @@ public class CardActivity extends AppCompatActivity {
             for(int i=0; i<fieldNames.length; i++){
                 // Case for image
                 if(fieldNames[i].equals("Image")){
-                    Log.d(TAG, "Changing " + fields[i] + " to " + addedImageFileName);
-                    fields[i] = addedImageFileName;
+                    fields[i] = ""; // reset
+                    for (String filename : addedImageFileNames){
+                        Log.d(TAG, "Adding " + filename + " to " + fields[i]);
+                        fields[i] += filename;
+                    }
                 }
             }
 
@@ -191,7 +190,7 @@ public class CardActivity extends AppCompatActivity {
 
             // Remove card from saved data
             String key = this.getIntent().getStringExtra("prefKey");
-            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+            SharedPreferences sharedPref = getSharedPreferences(key, MODE_PRIVATE);
             Set<String> nidSet = sharedPref.getStringSet(key, null);
             if (nidSet.remove(this.getIntent().getStringExtra("noteId") + "," + this.getIntent().getStringExtra("modelId"))){
                 Log.d(TAG, "removed word from " + key + " set successfully");

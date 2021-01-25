@@ -80,37 +80,59 @@
                 android:id="@+id/modelSpinner"
                 android:layout_marginBottom="4dp" />
 
+            <TextView
+                android:id="@+id/empty_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:labelFor="@+id/deckSpinner"
+                android:text="Empty images: "/>
+
             <Button
                 android:id="@+id/button_empty"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="100dp"
-                android:layout_marginVertical="10dp"
+                android:layout_gravity="start"
                 android:text="@string/empty_image_cards"/>
+
+            <TextView
+                android:id="@+id/marked_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:labelFor="@+id/deckSpinner"
+                android:text="Marked cards: "/>
 
             <Button
                 android:id="@+id/button_marked"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="100dp"
-                android:layout_marginVertical="10dp"
+                android:layout_gravity="start"
                 android:text="@string/marked_cards"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:labelFor="@+id/deckSpinner"
+                android:text="Picks a card at random"/>
 
             <Button
                 android:id="@+id/button_auto_cards"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="100dp"
-                android:layout_marginVertical="10dp"
+                android:layout_gravity="start"
                 android:text="@string/auto_cards"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:labelFor="@+id/deckSpinner"
+                android:text="Clears all preloaded cards"/>
 
             <Button
                 android:id="@+id/clear_save"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="100dp"
-                android:layout_marginVertical="10dp"
-                android:text="@string/clear_save"/>
+                android:text="@string/clear_save"
+                android:layout_gravity="start"/>
         </LinearLayout>
     </RelativeLayout>
 
