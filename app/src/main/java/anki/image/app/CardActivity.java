@@ -231,8 +231,10 @@ public class CardActivity extends AppCompatActivity {
      * @return the path that the file was saved at
      */
     public String createAndSaveFileFromBase64Url(String url) {
+        Log.d(TAG, "createAndSaveFileFromBase64Url() called");
         //File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS); // save in public external dir
         File path = getApplicationContext().getExternalFilesDir(null);
+        Log.d(TAG, "Path: " + path);
         String filetype = url.substring(url.indexOf("/") + 1, url.indexOf(";"));
         String filename = System.currentTimeMillis() + "." + filetype;
         File file = new File(path, filename);

@@ -24,29 +24,26 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.preference.PreferenceManager;
 
 import com.ichi2.anki.FlashCardsContract;
 import com.ichi2.anki.api.AddContentApi;
 
-import java.util.Collection;
+import java.io.File;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
-import static com.ichi2.anki.api.AddContentApi.READ_WRITE_PERMISSION;
-
 public class MainActivity extends AppCompatActivity implements ActivityCompat.OnRequestPermissionsResultCallback{
     public static final String TAG = "Android :";
     private EditText wordEdit;
-    private AddContentApi mApi;
-    private AnkiDroidHelper mAnkiDroid;
-    private final String[] keys = {"emptyImageCards", "markedCards", "autoCards"};
-    private int jap_word_index;
-    private int eng_word_index;
+    private AddContentApi ankiDroidApi;
+    private AnkiDroidHelper ankiDroidHelper;
+    private final String[] cardKeys = {"empty-image", "marked", "auto-generated"};
+    private int kanjiWordIndex;
+    private int englishWordIndex;
     private static final int ANKIDROID_PERM_REQUEST = 0;
     private static final int REQUEST_EXTERNAL_STORAGE = 1;
     private static final String[] PERMISSIONS_STORAGE = {
@@ -56,19 +53,19 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode== ANKIDROID_PERM_REQUEST && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            finishCreate();
-        } else if (requestCode== REQUEST_EXTERNAL_STORAGE && grantResults[0] == PackageManager.PERMISSION_GRANTED)  {
-            finishCreate();
-        } else {
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            AlertDialog dialog = builder.setTitle(R.string.anki_needed)
-                    .setMessage(R.string.anki_needed_long)
-                    .setPositiveButton("OK", (dialog1, which) -> finish())
-                    .create();
-
-            dialog.setOnDismissListener(dialog12 -> finish());
-            dialog.show();
+        if (requestCode == ANKIDROID_PERM_REQUEST || requestCode == REQUEST_EXTERNAL_STORAGE){
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                checkPermissions();
+                finishCreate();
+            } else {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                AlertDialog dialog = builder.setTitle(R.string.permissions_needed)
+                        .setMessage(R.string.permissions_needed_long)
+                        .setPositiveButton("OK", (dialog1, which) -> finish())
+                        .create();
+                dialog.setOnDismissListener(dialog12 -> finish());
+                dialog.show();
+            }
         }
     }
 
@@ -76,108 +73,102 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG,"onCreate ---------------------");
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        mApi = new AddContentApi(this);
-        mAnkiDroid = new AnkiDroidHelper(this);
-
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-
-        // Load default preferences
-        PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
-
+        ankiDroidApi = new AddContentApi(this);
+        ankiDroidHelper = new AnkiDroidHelper(this);
         wordEdit = findViewById(R.id.wordEdit);
-
+        PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
+        setContentView(R.layout.activity_main);
+        setSupportActionBar(findViewById(R.id.toolbar));
+        checkPermissions();
         finishCreate();
     }
 
-    private void finishCreate(){
-        Log.d(TAG,"the finishCreate method");
-
-        // Check AnkiDroid permission
-        if (mAnkiDroid.shouldRequestPermission()) {
-            Log.d(TAG,"should Request AD-Permission");
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{READ_WRITE_PERMISSION}, ANKIDROID_PERM_REQUEST);
-        } else if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            // We don't have permission so prompt the user
+    private void checkPermissions(){
+        if (ankiDroidHelper.shouldRequestPermission()) {
+            ankiDroidHelper.requestPermission(MainActivity.this, ANKIDROID_PERM_REQUEST);
+        } else if (shouldRequestStoragePermission()) {
             ActivityCompat.requestPermissions(MainActivity.this, PERMISSIONS_STORAGE, REQUEST_EXTERNAL_STORAGE);
+        }
+    }
+
+    private boolean shouldRequestStoragePermission(){
+        int storagePermissionStatus = ActivityCompat.checkSelfPermission(
+                MainActivity.this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        return storagePermissionStatus != PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void finishCreate(){
+        initSpinner(R.id.deckSpinner);
+        initSpinner(R.id.modelSpinner);
+        initButton(R.id.button_empty);
+        initButton(R.id.button_marked);
+        initButton(R.id.button_auto_cards);
+        initClearSavedCardsButton();
+    }
+
+    // Get deck or model list and put the names into the spinner
+    private void initSpinner(int id){
+        final Spinner posSpinner = findViewById(id);
+        Map<Long, String> idNamePairs = null;
+
+        if (id == R.id.deckSpinner) {
+            idNamePairs = ankiDroidApi.getDeckList();
+        } else if (id == R.id.modelSpinner){
+            idNamePairs = ankiDroidApi.getModelList();
+        }
+
+        if (idNamePairs != null){
+            String[] names = idNamePairs.values().toArray(new String[0]);
+            ArrayAdapter<CharSequence> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, names);
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            posSpinner.setAdapter(adapter);
+            posSpinner.setSelection(getPersistedSpinnerItem(id));
+            posSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parentView, View view, int position, long itemId) {
+                    setPersistedSpinnerItem(position, id);
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> arg0) {
+
+                }
+            });
+        }
+    }
+
+    private int getPersistedSpinnerItem(int id) {
+        if (id == R.id.deckSpinner){
+            return PreferenceManager.getDefaultSharedPreferences(this).getInt("deckSelection", 0);
+        } else if (id == R.id.modelSpinner){
+            return PreferenceManager.getDefaultSharedPreferences(this).getInt("modelSelection", 0);
         } else {
-            Log.d(TAG,"AD-Permission cleared");
-            Log.d(TAG,"Storage Permission cleared");
-
-            // Init the rest of the UI elements
-            initSpinner(R.id.deckSpinner);
-            initSpinner(R.id.modelSpinner);
-            initButton(R.id.button_empty);
-            initButton(R.id.button_marked);
-            initButton(R.id.button_auto_cards);
-            initSaveButton();
+            Log.d(TAG, "No matching spinner found");
+            return 0;
         }
     }
 
-    @Override
-    protected void onResume(){
-        super.onResume();
-        SharedPreferences defSharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-        jap_word_index = Integer.parseInt(defSharedPref.getString("preference_jap_field_index", "0"));
-        eng_word_index = Integer.parseInt(defSharedPref.getString("preference_trans_field_index", "3"));
-        Log.d(TAG,"jap_word_index" + jap_word_index);
-        Log.d(TAG,"eng_word_index" + eng_word_index);
-        logSavedData("markedCards");
-        logSavedData("emptyImageCards");
-        updateCardCountText("markedCards");
-        updateCardCountText("emptyImageCards");
-    }
-
-    private void updateCardCountText(String key) {
-        Log.d(TAG, "Logging all saved cards for " + key);
-        SharedPreferences sharedPref = getSharedPreferences(key, MODE_PRIVATE);
-        Set<String> nidSet = sharedPref.getStringSet(key, null);
-        if (nidSet != null){
-            TextView text = (key.equals("emptyImageCards")) ? findViewById(R.id.empty_count) : findViewById(R.id.marked_count); // get the button
-            String prefix = (key.equals("emptyImageCards")) ? "Empty cards: " : "Marked Cards: ";
-            String dispText = prefix + nidSet.size();
-            text.setText(dispText);
+    @SuppressLint("ApplySharedPref")
+    protected void setPersistedSpinnerItem(int position, int id) {
+        if (id == R.id.deckSpinner){
+            PreferenceManager.getDefaultSharedPreferences(this).edit().putInt("deckSelection", position).commit();
+        } else if (id == R.id.modelSpinner){
+            PreferenceManager.getDefaultSharedPreferences(this).edit().putInt("modelSelection", position).commit();
+        } else {
+            Log.d(TAG, "No matching spinner found");
         }
     }
 
-    // create an action bar options button
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return super.onCreateOptionsMenu(menu);
-    }
-
-    // handle button activities
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
-
-        if (id == R.id.mybutton) {
-            Log.d(TAG,"Options clicked");
-            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
-            startActivity(intent);
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    // Init either empty card-button or marked card-button
     private void initButton(int button_id){
-        Button button = findViewById(button_id); // get the button
+        Button button = findViewById(button_id);
         button.setOnClickListener(v -> {
-            Log.d(TAG,"Button clicked");
+            Log.d(TAG, "Button pressed");
             String prefKey = getKey(button_id);
-            String[] emptyImageArray = getWord(prefKey);
-            if (emptyImageArray != null){
+            String[] matchingWordInfo = getMatchingWordInfo(prefKey);
+            if (matchingWordInfo != null){
                 Intent intent = new Intent(MainActivity.this, CardActivity.class);
-                String[] fields = mApi.getNote(Long.parseLong(emptyImageArray[0])).getFields(); // Get field contents
-                intent.putExtra("fields", fields); // Add field contents
-                intent.putExtra("prefKey",prefKey); // Add prefKey
-                intent.putExtra("noteId",emptyImageArray[0]);
-                intent.putExtra("word", emptyImageArray[1]);
-                intent.putExtra("modelId", emptyImageArray[2]);
-                intent.putExtra("translation", emptyImageArray[3]);
-                intent.putExtra("searchAppendix", wordEdit.getText().toString());
+                putAllExtra(intent, matchingWordInfo, prefKey);
                 startActivity(intent);
             } else {
                 Log.d(TAG,"Could not find any cards");
@@ -186,140 +177,113 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         });
     }
 
-    private void initSaveButton(){
-        Button button = findViewById(R.id.clear_save);
-        button.setOnClickListener(v -> {
-            Log.d(TAG,"Clear Button clicked");
-            new AlertDialog.Builder(MainActivity.this)
-                    .setTitle("Erasing local data").setMessage("Are you sure you want to erase all saved lists? (this will force an re-check")
-                    .setPositiveButton("Yes", (dialog, which) -> deleteSharedPreferences()).setNegativeButton("No", null).show();
-        });
-    }
-
-    private void deleteSharedPreferences(){
-        Log.d(TAG, "Deleting sharedPrefs 'boardConfig'...");
-        for (String s : keys){
-            Log.d(TAG,"Deleting data for " + s);
-            SharedPreferences sharedPref = getSharedPreferences(s, MODE_PRIVATE);
-            SharedPreferences.Editor editor = sharedPref.edit();
-            editor.clear();
-            editor.apply();
-        }
-        Toast.makeText(getBaseContext(), "Data reset", Toast.LENGTH_SHORT).show();
-    }
-
-    // Get deck or model list and put the names into the spinner
-    private void initSpinner(int id){
-        final Spinner posSpinner = findViewById(id);
-        // Set the spinner values
-        Map<Long, String> map = (id == R.id.deckSpinner) ? mApi.getDeckList() : mApi.getModelList();
-        Collection<String> values = map.values();
-        String[] array = values.toArray(new String[0]);
-        ArrayAdapter<CharSequence> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, array);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        posSpinner.setAdapter(adapter);
-        posSpinner.setSelection(getPersistedItem(id));
-        // Set the spinner to save state
-        posSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parentView, View view, int position, long itemId) {
-                setPersistedItem(position, id);
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> arg0) {
-
-            }
-        });
-    }
-
-    private int getPersistedItem(int id) {
-        Log.d(TAG, "Getting spinner selection");
-        if (id == R.id.deckSpinner){
-            return PreferenceManager.getDefaultSharedPreferences(this).getInt("deckSelection", 0);
-        } else {
-            return PreferenceManager.getDefaultSharedPreferences(this).getInt("modelSelection", 0);
-        }
-    }
-
-    @SuppressLint("ApplySharedPref")
-    protected void setPersistedItem(int position, int id) {
-        Log.d(TAG, "Setting spinner selection");
-        if (id == R.id.deckSpinner){
-            PreferenceManager.getDefaultSharedPreferences(this).edit().putInt("deckSelection", position).commit();
-        } else {
-            PreferenceManager.getDefaultSharedPreferences(this).edit().putInt("modelSelection", position).commit();
-        }
-    }
-
     private String getKey(int button_id){
         if (button_id == R.id.button_empty){
-            return "emptyImageCards";
+            return cardKeys[0];
         } else if (button_id == R.id.button_marked) {
-            return "markedCards";
+            return cardKeys[1];
         } else if (button_id == R.id.button_auto_cards) {
-            return "autoCards";
+            return cardKeys[2];
         } else {
             return null;
         }
     }
 
-    /**
-     * Gets the word on which the image search will be based on
-     * @param prefKey the id of the button that was clicked
-     * @return string array containing: [note_id, contents of field 0 (japanese word), model_id, contents of field 3 (eng translation)]
-     */
-    private String[] getWord(String prefKey) {
+    private void putAllExtra(Intent intent, String[] matchingWordInfo, String prefKey){
+        String[] fieldContents = ankiDroidApi.getNote(Long.parseLong(matchingWordInfo[0])).getFields();
+        intent.putExtra("fields", fieldContents);
+        intent.putExtra("prefKey",prefKey);
+        intent.putExtra("noteId",matchingWordInfo[0]);
+        intent.putExtra("word", matchingWordInfo[1]);
+        intent.putExtra("modelId", matchingWordInfo[2]);
+        intent.putExtra("translation", matchingWordInfo[3]);
+        intent.putExtra("searchAppendix", wordEdit.getText().toString());
+    }
+
+    private void initClearSavedCardsButton(){
+        Button button = findViewById(R.id.clear_save);
+        button.setOnClickListener(v -> {
+            new AlertDialog.Builder(MainActivity.this)
+                    .setTitle(R.string.erase_data_title).setMessage(R.string.erase_data_long)
+                    .setPositiveButton("Yes", (dialog, which) -> deleteSavedCards()).setNegativeButton("No", null).show();
+        });
+    }
+
+    private void deleteSavedCards(){
+        //TODO: make keys non-global
+        for (String s : cardKeys){
+            SharedPreferences sharedPref = getSharedPreferences(s, MODE_PRIVATE);
+            SharedPreferences.Editor editor = sharedPref.edit();
+            editor.clear();
+            editor.apply();
+        }
+        Toast.makeText(getBaseContext(), "Saved cards deleted", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.option_menu, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    // handle button activities
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.options_button) {
+            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+            startActivity(intent);
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private Set<String> getCardIdSet(String cardKey){
+        SharedPreferences sharedPref = getSharedPreferences(cardKey, MODE_PRIVATE);
+        return sharedPref.getStringSet(cardKey, null);
+    }
+
+    private String[] getMatchingWordInfo(String cardKey) {
         ContentResolver cr = this.getContentResolver();
         Spinner deckSpinner = findViewById(R.id.deckSpinner);
         Spinner modelSpinner = findViewById(R.id.modelSpinner);
-        String deckName = (String) deckSpinner.getSelectedItem(); // Get selected deck name
-        String modelName = (String) modelSpinner.getSelectedItem(); // Get selected model
+        String selectedDeck = (String) deckSpinner.getSelectedItem(); // Get selected deck name
+        String selectedModel = (String) modelSpinner.getSelectedItem(); // Get selected model
+
+        CardFinder finder = new CardFinder(selectedDeck, selectedModel, cardKey);
+
         final Cursor cardsCursor;
 
-        switch (prefKey) {
-            case "emptyImageCards": {
-                Log.d(TAG, "Checking saved empty image cards");
-                String[] savedCard = getSavedCard(prefKey);
-                if (savedCard != null) {
-                    Log.d(TAG, "Saved empty image card found!");
-                    return savedCard;
-                }
-                Log.d(TAG, "No save data, querying all cards in deck " + deckName);
-                cardsCursor = cr.query(FlashCardsContract.Note.CONTENT_URI, null, "deck:\"" + deckName + "\"" + " note:\"" + modelName + "\"", null, null); // alt: "deck:\"" + deckName + "\""
+        if (cardKey.equals("empty-image")) {
+            String[] savedCard = getSavedCard(cardKey);
+            if (savedCard != null) {
+                return savedCard;
+            }
+            cardsCursor = cr.query(FlashCardsContract.Note.CONTENT_URI, null, "deck:\"" + selectedDeck + "\"" + " note:\"" + selectedModel + "\"", null, null); // alt: "deck:\"" + deckName + "\""
 
-                if (cardsCursor != null) {
-                    Log.d(TAG, "Count: " + cardsCursor.getCount());
-                    saveAllNoImageCards(cardsCursor, prefKey);
-                    return getFirstCardWithoutImage(cardsCursor);
-                }
-                break;
+            if (cardsCursor != null) {
+                Log.d(TAG, "Count: " + cardsCursor.getCount());
+                saveAllNoImageCards(cardsCursor, cardKey);
+                return getFirstCardWithoutImage(cardsCursor);
             }
-            case "markedCards": {
-                Log.d(TAG, "Checking saved marked cards");
-                String[] savedCard = getSavedCard(prefKey);
-                if (savedCard != null) {
-                    return savedCard;
-                }
-                Log.d(TAG, "No save data, querying marked cards in deck " + deckName);
-                cardsCursor = cr.query(FlashCardsContract.Note.CONTENT_URI, null, "deck:\"" + deckName + "\"" + " tag:marked ", null, null);
-                if (cardsCursor != null) {
-                    Log.d(TAG, "Count: " + cardsCursor.getCount());
-                    saveAllQueriedCards(cardsCursor, prefKey); // saves all the matching cards to shared prefs
-                    return getRandomCard(cardsCursor); // checks from queries
-                }
-                break;
+
+        } else if (cardKey.equals("marked")) {
+            String[] savedCard = getSavedCard(cardKey);
+            if (savedCard != null) {
+                return savedCard;
             }
-            case "autoCards":
-                Log.d(TAG, "Querying auto cards in deck " + deckName);
-                cardsCursor = cr.query(FlashCardsContract.Note.CONTENT_URI, null, "deck:\"" + deckName + "\"" + " tag:auto-generated ", null, null);
-                if (cardsCursor != null) {
-                    Log.d(TAG, "Count: " + cardsCursor.getCount());
-                    return getRandomCard(cardsCursor);
-                }
-                break;
+            cardsCursor = cr.query(FlashCardsContract.Note.CONTENT_URI, null, "deck:\"" + selectedDeck + "\"" + " tag:marked ", null, null);
+            if (cardsCursor != null) {
+                Log.d(TAG, "Count: " + cardsCursor.getCount());
+                saveAllQueriedCards(cardsCursor, cardKey); // saves all the matching cards to shared prefs
+                return getRandomCard(cardsCursor); // checks from queries
+            }
+
+        } else if (cardKey.equals("auto-generated")) {
+            cardsCursor = cr.query(FlashCardsContract.Note.CONTENT_URI, null, "deck:\"" + selectedDeck + "\"" + " tag:auto-generated ", null, null);
+            if (cardsCursor != null) {
+                Log.d(TAG, "Count: " + cardsCursor.getCount());
+                return getRandomCard(cardsCursor);
+            }
         }
-        Log.d(TAG, "the cursor returned null");
         return null;
     }
 
@@ -330,14 +294,12 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
      */
     private String[] getRandomCard(Cursor cardsCursor){
         Random r = new Random();
-        // Get id and mid from the cursor
         cardsCursor.moveToPosition(r.nextInt(cardsCursor.getCount()));
         String id = cardsCursor.getString(cardsCursor.getColumnIndex("_id"));
         String mid = cardsCursor.getString(cardsCursor.getColumnIndex("mid"));
         cardsCursor.close();
-        // get the word and translation from the api
-        String word = mApi.getNote(Long.parseLong(id)).getFields()[jap_word_index];
-        String translation = mApi.getNote(Long.parseLong(id)).getFields()[eng_word_index];
+        String word = ankiDroidApi.getNote(Long.parseLong(id)).getFields()[kanjiWordIndex];
+        String translation = ankiDroidApi.getNote(Long.parseLong(id)).getFields()[englishWordIndex];
         Log.d(TAG, "Returning word: " + word);
         return new String[]{id, word, mid, translation};
     }
@@ -365,7 +327,6 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
     private void saveAllNoImageCards(Cursor cardsCursor, String prefKey){
         Log.d(TAG, "Saving all no image cards...");
         Set<String> nidSet = new HashSet<>();
-        // Iterate over all matching queries
         for (int i = 0; i < cardsCursor.getCount(); i++){
             cardsCursor.moveToPosition(i);
             String flds = cardsCursor.getString(cardsCursor.getColumnIndex("flds"));
@@ -376,8 +337,6 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
             }
         }
         Log.d(TAG, "Total nidset: " + nidSet);
-
-        // Save nids to shared
         SharedPreferences sharedPref = getSharedPreferences(prefKey, MODE_PRIVATE);
         Log.d(TAG, "saving data to key " + prefKey);
         SharedPreferences.Editor editor = sharedPref.edit();
@@ -386,31 +345,25 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
     }
 
     public String[] getSavedCard(String prefKey){
-        SharedPreferences sharedPref = getSharedPreferences(prefKey, MODE_PRIVATE);
-        Set<String> nidSet = sharedPref.getStringSet(prefKey, null);
-        if (nidSet != null){
-            if (nidSet.size() != 0){
+        Set <String> cardIdSet = getCardIdSet(prefKey);
+        if (cardIdSet != null){
+            if (cardIdSet.size() != 0){
                 String nidMid = "";
-                for(String aNid: nidSet) {
+                for(String aNid: cardIdSet) {
                     nidMid = aNid;
                     break;
                 }
                 String nid = nidMid.split(",")[0];
                 String mid = nidMid.split(",")[1];
-                String word = mApi.getNote(Long.parseLong(nid)).getFields()[jap_word_index];
-                String translation = mApi.getNote(Long.parseLong(nid)).getFields()[eng_word_index];
+                String word = ankiDroidApi.getNote(Long.parseLong(nid)).getFields()[kanjiWordIndex];
+                String translation = ankiDroidApi.getNote(Long.parseLong(nid)).getFields()[englishWordIndex];
                 Log.d(TAG, "Saved card: [" + nid + ", " + word + ", " + mid + ", " + translation + "]");
                 return new String[]{nid, word, mid, translation};
             }
         }
         return null;
     }
-
-    /**
-     *
-     * @param cardsCursor the cursor that holds the search query
-     * @return the first card that does not conatin 'img' in any of the fields
-     */
+    
     private String[] getFirstCardWithoutImage(Cursor cardsCursor){
         // Iterate from top to bottom
         for (int i = cardsCursor.getCount() - 1; i > 0; i--){
@@ -420,14 +373,14 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
             String mid = cardsCursor.getString(cardsCursor.getColumnIndex("mid"));
             if (!flds.contains("img")){
                 cardsCursor.close();
-                String word = mApi.getNote(Long.parseLong(id)).getFields()[jap_word_index];
-                String translation = mApi.getNote(Long.parseLong(id)).getFields()[eng_word_index];
+                String word = ankiDroidApi.getNote(Long.parseLong(id)).getFields()[kanjiWordIndex];
+                String translation = ankiDroidApi.getNote(Long.parseLong(id)).getFields()[englishWordIndex];
                 Log.d(TAG, "Returning word: " + word);
                 return new String[]{id, word, mid, translation};
             }
         }
         cardsCursor.close();
-        return null; // Found no card without image
+        return null;
     }
 
     public void logSavedData(String key){
@@ -438,9 +391,55 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
             for (String aNid : nidSet) {
                 String nid = aNid.split(",")[0];
                 String mid = aNid.split(",")[1];
-                String word = mApi.getNote(Long.parseLong(nid)).getFields()[jap_word_index];
-                String translation = mApi.getNote(Long.parseLong(nid)).getFields()[eng_word_index];
+                String word = ankiDroidApi.getNote(Long.parseLong(nid)).getFields()[kanjiWordIndex];
+                String translation = ankiDroidApi.getNote(Long.parseLong(nid)).getFields()[englishWordIndex];
                 Log.d(TAG, "Saved card: [" + nid + ", " + word + ", " + mid + ", " + translation + "]");
+            }
+        }
+    }
+
+    @Override
+    protected void onResume(){
+        super.onResume();
+        SharedPreferences defSharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        kanjiWordIndex = Integer.parseInt(defSharedPref.getString("preference_jap_field_index", "0"));
+        englishWordIndex = Integer.parseInt(defSharedPref.getString("preference_trans_field_index", "3"));
+        Log.d(TAG,"jap_word_index" + kanjiWordIndex);
+        Log.d(TAG,"eng_word_index" + englishWordIndex);
+        logSavedData("markedCards");
+        logSavedData("emptyImageCards");
+        setCountTextForCards("marked");
+        setCountTextForCards("empty-image");
+        deleteImageFiles();
+    }
+
+    private void setCountTextForCards(String key) {
+        Set<String> cardIdSet = getCardIdSet(key);
+        if (cardIdSet != null){
+            TextView text = null;
+            String infoText = "";
+            if(key.equals("empty-image")){
+                text = findViewById(R.id.empty_count);
+                infoText = "Empty Cards: " + cardIdSet.size();
+            } else if (key.equals("marked")) {
+                text =  findViewById(R.id.marked_count);
+                infoText = "Marked Cards: " + cardIdSet.size();
+            }
+            if (text != null){
+                text.setText(infoText);
+            }
+        }
+    }
+
+    private void deleteImageFiles() {
+        Log.d(TAG,"Deleting image files...");
+        File fileDir = getApplicationContext().getExternalFilesDir(null);
+        for (File child : fileDir.listFiles()){
+            if (child.exists()){
+                boolean deletedSuccessfully = child.delete();
+                if(deletedSuccessfully){
+                    Log.d(TAG, child + " deleted successfully");
+                }
             }
         }
     }
