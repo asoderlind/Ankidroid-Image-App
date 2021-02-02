@@ -42,12 +42,12 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:labelFor="@+id/wordEdit"
+                android:labelFor="@+id/appendixText"
                 android:text="@string/appendix"
                 android:textAppearance="?android:attr/textAppearanceSmall" />
 
             <EditText
-                android:id="@+id/wordEdit"
+                android:id="@+id/appendixText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:maxLines="1"
