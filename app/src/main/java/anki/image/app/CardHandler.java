@@ -168,18 +168,9 @@ public class CardHandler {
         return null;
     }
 
-    public void logSavedData(String prefKey){
-        Log.d(TAG, "Logging all saved cards for " + prefKey);
-        Set<String> nidSet = getCardIdSet(prefKey);
-        if (nidSet != null) {
-            for (String aNid : nidSet) {
-                Log.d(TAG, "Saved card: [" + aNid + "]");
-            }
-        }
-    }
-
     private Set<String> getCardIdSet(String prefKey){
-        return mContext.getSharedPreferences(prefKey, Context.MODE_PRIVATE).getStringSet(prefKey, null);
+        SharedPreferences sharedPrefs = mContext.getSharedPreferences(prefKey, Context.MODE_PRIVATE);
+        return sharedPrefs.getStringSet(prefKey, null);
     }
 
 }

@@ -30,6 +30,8 @@ import androidx.preference.PreferenceManager;
 import com.ichi2.anki.api.AddContentApi;
 
 import java.io.File;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -39,7 +41,8 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
     public static final String TAG = "Android :";
     private EditText appendixText;
     private AddContentApi ankiDroidApi;
-    private final String[] cardKeys = {"empty-image", "marked", "auto-generated"};
+    private final String[] cardKeys = {"no-image", "marked", "auto-generated"};
+    private Map<Integer, String> buttonMap;
     private int kanjiWordIndex;
     private int englishWordIndex;
     private static final int ANKIDROID_PERM_REQUEST = 0;
@@ -108,6 +111,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         initButton(R.id.button_empty);
         initButton(R.id.button_marked);
         initButton(R.id.button_auto_cards);
+        initButtonMap();
         initClearPreloadedCardsButton();
     }
 
@@ -177,15 +181,18 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         });
     }
 
+    private void initButtonMap(){
+        buttonMap = new HashMap<>();
+        buttonMap.put(R.id.button_empty, "no-image");
+        buttonMap.put(R.id.button_marked, "marked");
+        buttonMap.put(R.id.button_auto_cards, "auto-generated");
+    }
+
     private String getKey(int button_id){
-        if (button_id == R.id.button_empty){
-            return cardKeys[0];
-        } else if (button_id == R.id.button_marked) {
-            return cardKeys[1];
-        } else if (button_id == R.id.button_auto_cards) {
-            return cardKeys[2];
+        if (buttonMap.containsKey(button_id)){
+            return buttonMap.get(button_id);
         } else {
-            return null;
+            return "";
         }
     }
 
@@ -193,9 +200,9 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         String[] fieldContents = ankiDroidApi.getNote(Long.parseLong(matchingWordMap.get("id"))).getFields();
         intent.putExtra("fields", fieldContents);
         intent.putExtra("prefKey",prefKey);
-        intent.putExtra("noteId",matchingWordMap.get("id"));
+        intent.putExtra("id",matchingWordMap.get("id"));
         intent.putExtra("word", matchingWordMap.get("word"));
-        intent.putExtra("modelId", matchingWordMap.get("mid"));
+        intent.putExtra("mid", matchingWordMap.get("mid"));
         intent.putExtra("translation", matchingWordMap.get("translation"));
         intent.putExtra("searchAppendix", appendixText.getText().toString());
     }
@@ -232,9 +239,14 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         return super.onOptionsItemSelected(item);
     }
 
-    private Set<String> getCardIdSet(String cardKey){
+    public Set<String> getCardIdSet(String cardKey){
         SharedPreferences sharedPref = getSharedPreferences(cardKey, MODE_PRIVATE);
-        return sharedPref.getStringSet(cardKey, null);
+        try {
+            return sharedPref.getStringSet(cardKey, null);
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+            return Collections.emptySet();
+        }
     }
 
     private Map<String, String> getMatchingWordInfo(String cardKey) {
@@ -245,7 +257,6 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
                 (String) modelSpinner.getSelectedItem(),
                 kanjiWordIndex,
                 englishWordIndex);
-        handler.logSavedData(cardKey);
         Map<String, String> savedCard = handler.getSavedCard(cardKey);
         if (savedCard != null) {
             return savedCard;
@@ -253,7 +264,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
             handler.saveAllWithoutImage();
             handler.saveAllWithTag(cardKey);
         }
-        if (cardKey.equals("empty-image")) {
+        if (cardKey.equals("no-image")) {
             return handler.getCardWithoutImage();
         } else {
             return handler.getCardFromTag(cardKey);
@@ -269,8 +280,23 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         Log.d(TAG,"jap_word_index" + kanjiWordIndex);
         Log.d(TAG,"eng_word_index" + englishWordIndex);
         setCountTextForCards("marked");
-        setCountTextForCards("empty-image");
+        setCountTextForCards("no-image");
+        logSavedData();
         deleteImageFiles();
+    }
+
+    public void logSavedData(){
+        for (String s : cardKeys){
+            SharedPreferences sharedPref = getSharedPreferences(s, MODE_PRIVATE);
+            Log.d(TAG, "Logging all saved cards for " + s);
+            Set<String> nidSet = getCardIdSet(s);
+            if (nidSet != null) {
+                for (String aNid : nidSet) {
+                    Log.d(TAG, "Saved card: [" + aNid + "]");
+                }
+            }
+        }
+        Toast.makeText(getBaseContext(), "Saved cards deleted", Toast.LENGTH_SHORT).show();
     }
 
     private void setCountTextForCards(String key) {
@@ -278,7 +304,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         if (cardIdSet != null){
             TextView text = null;
             String infoText = "";
-            if(key.equals("empty-image")){
+            if(key.equals("no-image")){
                 text = findViewById(R.id.empty_count);
                 infoText = "Empty Cards: " + cardIdSet.size();
             } else if (key.equals("marked")) {

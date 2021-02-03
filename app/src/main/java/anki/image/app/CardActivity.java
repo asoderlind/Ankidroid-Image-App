@@ -28,6 +28,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 import static android.media.MediaScannerConnection.*;
@@ -35,52 +39,65 @@ import static android.media.MediaScannerConnection.*;
 public class CardActivity extends AppCompatActivity {
     private static final String TAG = "CardActivity : ";
     private ImageFragment mImageFragment;
-
     private AddContentApi mApi;
     private AnkiDroidHelper mAnkiDroid;
-
+    private String mAppendix;
+    private String mPrefKey;
+    private String [] mFields;
+    private Map<String, String> wordMap;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Log.d("msg :", "onCreate() called");
-
-        mApi = new AddContentApi(this);
-        mAnkiDroid = new AnkiDroidHelper(this);
-        Intent intent = getIntent();
-
-        // Get passed values
-        String word = intent.getStringExtra("word");
-        String appendix = intent.getStringExtra("searchAppendix");
-        String translation =  intent.getStringExtra("translation");
-
-        if (word == null) {
-            finish();
-        } else {
-            setTitle(word + appendix + ", " + translation);
-            mImageFragment = ImageFragment.newInstance(word, appendix);
-        }
-
-        setContentView(R.layout.activity_card); // Set our view to activity_card.xml
-
+        Log.d(TAG, "onCreate() called");
+        initAnkiApi();
+        getAllExtra();
+        setTitle(wordMap.get("word") + mAppendix + ", " + wordMap.get("translation"));
+        mImageFragment = ImageFragment.newInstance(wordMap.get("word"), mAppendix);
+        setContentView(R.layout.activity_card);
         Toolbar myToolbar = findViewById(R.id.my_toolbar);
         setSupportActionBar(myToolbar);
-
-        //Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true); //TODO: fix back button
-
-        // Setup view pager
-        ViewPager viewPager = findViewById(R.id.pager);
-        if (viewPager == null) throw new AssertionError();
-        viewPager.setOffscreenPageLimit(10);
-        viewPager.setAdapter(new CardFragmentPagerAdapter(getSupportFragmentManager()));
-
-        // setup tab layout
-        TabLayout tabLayout = findViewById(R.id.tablayout);
-        if (tabLayout == null) throw new AssertionError();
-        tabLayout.setupWithViewPager(viewPager);
+        ViewPager myViewPager = initViewPager();
+        initTabLayout(myViewPager);
     }
 
-    /* Adapter where you input how many pages of fragments you want and the title etc. */
+    private void initAnkiApi(){
+        mApi = new AddContentApi(this);
+        mAnkiDroid = new AnkiDroidHelper(this);
+    }
+
+    private void getAllExtra(){
+        Intent intent = getIntent();
+        wordMap = new HashMap<>();
+        wordMap.put("id", intent.getStringExtra("id"));
+        wordMap.put("word", intent.getStringExtra("word"));
+        wordMap.put("mid", intent.getStringExtra("mid"));
+        wordMap.put("translation", intent.getStringExtra("translation"));
+        mAppendix = intent.getStringExtra("appendix");
+        mPrefKey = intent.getStringExtra("prefKey");
+        mFields = intent.getStringArrayExtra("fields");
+    }
+
+    private ViewPager initViewPager(){
+        ViewPager viewPager = findViewById(R.id.pager);
+        try {
+            viewPager.setOffscreenPageLimit(10);
+            viewPager.setAdapter(new CardFragmentPagerAdapter(getSupportFragmentManager()));
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+        }
+        return viewPager;
+    }
+
+    private void initTabLayout(ViewPager myViewPager){
+        TabLayout tabLayout = findViewById(R.id.tablayout);
+        try {
+            tabLayout.setupWithViewPager(myViewPager);
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+        }
+    }
+
     private class CardFragmentPagerAdapter extends FragmentPagerAdapter {
         public CardFragmentPagerAdapter(FragmentManager fm) {
             super(fm, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT);
@@ -91,7 +108,7 @@ public class CardActivity extends AppCompatActivity {
             if (position == 0) {
                 return mImageFragment; // TODO: add other fragments
             } else {
-                return null;
+                return mImageFragment;
             }
         }
 
@@ -103,9 +120,9 @@ public class CardActivity extends AppCompatActivity {
         @Override
         public CharSequence getPageTitle(int position) {
             if (position == 0) {
-                return getString(R.string.images);
+                return getString(R.string.images); // TODO: add more fragment titles
             }
-            return null;
+            return getString(R.string.images);
         }
     }
 
@@ -116,13 +133,9 @@ public class CardActivity extends AppCompatActivity {
     }
 
     private String downloadImageToAnki(String base64Url){
-
-        // save base64 encoded image
         String returned_save_path = createAndSaveFileFromBase64Url(base64Url);
-        Log.d(TAG, "return from create and savefile: " + returned_save_path);
-
-        // Get the file path for the saved file
         File path = new File(returned_save_path, "");
+        Log.d(TAG, "return from create and savefile: " + returned_save_path);
         Log.d(TAG, "path: " + path);
 
         // pass the file to ankidroid via api
@@ -146,74 +159,106 @@ public class CardActivity extends AppCompatActivity {
 
     private void updateCard() {
         Log.d(TAG, "updateCard() called");
-
-        // Images from js-script
         ArrayList<String> images = mImageFragment.getSelected();
         Log.d(TAG, "images: " + images);
-
-        // List of image field content
         ArrayList<String> addedImageFileNames = new ArrayList<>();
         for (String base64Url : images){
-            addedImageFileNames.add(downloadImageToAnki(base64Url));
+            String fileName = downloadImageToAnki(base64Url);
+            addedImageFileNames.add(fileName);
         }
-
         if (addedImageFileNames.size() > 0){
-            // Variables from intent
-            long id = Long.parseLong(this.getIntent().getStringExtra("noteId"));
-            long modelId = Long.parseLong(this.getIntent().getStringExtra("modelId"));
-            String[] fields = this.getIntent().getStringArrayExtra("fields");
+            long id = Long.parseLong(wordMap.get("id"));
+            long modelId = Long.parseLong(wordMap.get("mid"));
+            boolean noteHasImageField = imageFieldExists(modelId);
+            if (noteHasImageField) {
+                String[] updatedFieldContents = replaceImageField(modelId, addedImageFileNames);
+                Set<String> updatedTags = removeMarkedTag(id);
+                removeObjectFromNidSet();
+                Log.d(TAG, "New Field Contents: " + Arrays.toString(updatedFieldContents));
+                boolean updateSucceed = mApi.updateNoteFields(id, updatedFieldContents);
+                boolean tagUpdateSucceed = mApi.updateNoteTags(id, updatedTags);
+                Toast.makeText(this, !updateSucceed ? getString(R.string.failed_add_card) : getString(R.string.card_updated), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, !tagUpdateSucceed ? getString(R.string.failed_change_tag) : getString(R.string.tag_updated), Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(this, "Image field not found", Toast.LENGTH_LONG).show();
+                Log.d(TAG, "The image field was not found");
+            }
+        } else {
+            Toast.makeText(this, "Image download failed", Toast.LENGTH_LONG).show();
+            Log.d(TAG, "The file downloader failed (null returned)");
+        }
+        finish();
+    }
 
-            // get the names of the fields from the model id
-            String[] fieldNames = mApi.getFieldList(modelId);
-            Set<String> tags = mApi.getNote(id).getTags();
+    private boolean imageFieldExists(Long modelId){
+        String[] fieldNames = mApi.getFieldList(modelId);
+        return Arrays.toString(fieldNames).contains("Image");
+    }
 
-            // Change image field
-            for(int i=0; i<fieldNames.length; i++){
-                // Case for image
+    private String[] replaceImageField(Long modelId, ArrayList<String> fileNames){
+        String[] fieldContents = mFields;
+        String[] fieldNames = mApi.getFieldList(modelId);
+            for(int i=0; i < fieldNames.length; i++){
                 if(fieldNames[i].equals("Image")){
-                    fields[i] = ""; // reset
-                    for (String filename : addedImageFileNames){
-                        Log.d(TAG, "Adding " + filename + " to " + fields[i]);
-                        fields[i] += filename;
+                    fieldContents[i] = "";
+                    for (String filename : fileNames){
+                        Log.d(TAG, "Adding " + filename + " to " + fieldContents[i]);
+                        fieldContents[i] += filename;
                     }
                 }
             }
+        return fieldContents;
+    }
 
-            // Remove tag from card
-            String tag = "marked";
-            Log.d(TAG, "Tags: " + tags);
-            if (tags.remove(tag)) {
-                Log.d(TAG, "removed " + tag + " tag successfully");
-            } else {
-                Log.d(TAG, "Failed to remove " + tag + " from card");
-            }
+    private Set<String> removeMarkedTag(Long id){
+        Set<String> tags = mApi.getNote(id).getTags();
+        String tag = "marked";
+        Log.d(TAG, "Tags: " + tags);
+        if (tags.remove(tag)) {
+            Log.d(TAG, "removed " + tag + " tag successfully");
+        } else {
+            Log.d(TAG, "Failed to remove " + tag + " from card");
+        }
+        return tags;
+    }
 
-            // Remove card from saved data
-            String key = this.getIntent().getStringExtra("prefKey");
-            SharedPreferences sharedPref = getSharedPreferences(key, MODE_PRIVATE);
-            Set<String> nidSet = sharedPref.getStringSet(key, null);
-            if (nidSet.remove(this.getIntent().getStringExtra("noteId") + "," + this.getIntent().getStringExtra("modelId"))){
-                Log.d(TAG, "removed word from " + key + " set successfully");
+    private String getNidSetObjectName(){
+        String nidSetObjectName = wordMap.get("id") + ",";
+        nidSetObjectName += wordMap.get("mid") + ",";
+        nidSetObjectName += wordMap.get("word") + ",";
+        nidSetObjectName += wordMap.get("translation");
+        Log.d(TAG, "nidSetObjectName: " + nidSetObjectName);
+        return nidSetObjectName;
+    }
+
+    private void removeObjectFromNidSet(){
+        SharedPreferences sharedPref = getSharedPreferences(mPrefKey, MODE_PRIVATE);
+        Set<String> nidSet = getNidSet(sharedPref);
+        String nidSetObjectName = getNidSetObjectName();
+        try {
+            boolean removedSuccessfully = nidSet.remove(nidSetObjectName);
+            if (removedSuccessfully){
+                Log.d(TAG, "removed word from " + mPrefKey + " set successfully");
                 SharedPreferences.Editor editor = sharedPref.edit();
-                editor.putStringSet(key, nidSet);
+                editor.putStringSet(mPrefKey, nidSet);
                 editor.apply();
             } else {
-                Log.d(TAG, "word was not found in " + key + " set");
+                Log.d(TAG, "word was not found in " + mPrefKey + " set");
             }
-
-            Log.d(TAG, "fields: " + Arrays.toString(fields)); // print fields
-
-            boolean updateSucceed = mApi.updateNoteFields(id,fields);
-            boolean tagUpdateSucceed = mApi.updateNoteTags(id, tags);
-
-            Toast.makeText(this, !updateSucceed ? getString(R.string.failed_add_card) : getString(R.string.card_updated), Toast.LENGTH_LONG).show();
-            Toast.makeText(this, !tagUpdateSucceed ? getString(R.string.failed_change_tag) : getString(R.string.tag_updated), Toast.LENGTH_LONG).show();
-
-        } else {
-            Log.d(TAG, "The file downloader failed (null returned)");
+        } catch (NullPointerException e){
+            e.printStackTrace();
+            Log.d(TAG, "word was null");
         }
-        //TODO: maybe not finish if there are still saved nids
-        finish();
+    }
+
+    private Set<String> getNidSet(SharedPreferences sharedPref){
+        try {
+            return sharedPref.getStringSet(mPrefKey, null);
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+            Log.d(TAG, "nidSet not found, has it been created?");
+            return Collections.emptySet();
+        }
     }
 
     @Override
