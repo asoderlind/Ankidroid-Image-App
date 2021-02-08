@@ -133,6 +133,19 @@
                 android:layout_height="wrap_content"
                 android:text="@string/clear_save"
                 android:layout_gravity="start"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:labelFor="@+id/deckSpinner"
+                android:text="Add example card"/>
+
+            <Button
+                android:id="@+id/add_example_card_btn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Add card"
+                android:layout_gravity="start"/>
         </LinearLayout>
     </RelativeLayout>
 

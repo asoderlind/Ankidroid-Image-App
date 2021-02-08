@@ -15,7 +15,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
-import android.util.Base64;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -23,21 +22,16 @@ import android.view.MenuItem;
 import android.widget.Toast;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import static android.media.MediaScannerConnection.*;
-
 public class CardActivity extends AppCompatActivity {
     private static final String TAG = "CardActivity : ";
+    private static final int EXIT_RESULT_CODE = 5;
     private ImageFragment mImageFragment;
     private AddContentApi mApi;
     private AnkiDroidHelper mAnkiDroid;
@@ -132,29 +126,13 @@ public class CardActivity extends AppCompatActivity {
         return true;
     }
 
-    private String downloadImageToAnki(String base64Url){
-        String returned_save_path = createAndSaveFileFromBase64Url(base64Url);
-        File path = new File(returned_save_path, "");
-        Log.d(TAG, "return from create and savefile: " + returned_save_path);
-        Log.d(TAG, "path: " + path);
-
-        // pass the file to ankidroid via api
-        if (path.exists()){
-
-            // we use a file provider to get the content URI for the image
-            Uri contentUri = FileProvider.getUriForFile(getApplicationContext(), "com.fileprovider", path);
-            Log.d(TAG, "contentUri: " + contentUri);
-
-            // need to grant permission to ankidroid to access the specific content URI
-            getApplicationContext().grantUriPermission("com.ichi2.anki", contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-            // returns filename if success otherwise null
-            return mAnkiDroid.addMediaFromUri(contentUri, "myImageFile", "image");
-
-        } else {
-            Log.d(TAG, "path does not exist");
-            return null;
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_create) {
+            updateCard();
+            return true;
         }
+        return super.onOptionsItemSelected(item);
     }
 
     private void updateCard() {
@@ -167,8 +145,8 @@ public class CardActivity extends AppCompatActivity {
             addedImageFileNames.add(fileName);
         }
         if (addedImageFileNames.size() > 0){
-            long id = Long.parseLong(wordMap.get("id"));
-            long modelId = Long.parseLong(wordMap.get("mid"));
+            long id = getPassedId("id");
+            long modelId = getPassedId("mid");
             boolean noteHasImageField = imageFieldExists(modelId);
             if (noteHasImageField) {
                 String[] updatedFieldContents = replaceImageField(modelId, addedImageFileNames);
@@ -188,6 +166,31 @@ public class CardActivity extends AppCompatActivity {
             Log.d(TAG, "The file downloader failed (null returned)");
         }
         finish();
+    }
+
+    private String downloadImageToAnki(String base64Url){
+        File dir_path = getApplicationContext().getExternalFilesDir(null);
+        String returned_save_path = Utils.createAndSaveFileFromBase64Url(this, dir_path, base64Url);
+        File path = new File(returned_save_path, "");
+        if (path.exists()){
+            Uri contentUri = FileProvider.getUriForFile(getApplicationContext(), "com.fileprovider", path);
+            Log.d(TAG, "contentUri: " + contentUri);
+            getApplicationContext().grantUriPermission("com.ichi2.anki", contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            // returns filename if success otherwise null
+            return mAnkiDroid.addMediaFromUri(contentUri, "myImageFile", "image");
+        } else {
+            Log.d(TAG, "path does not exist");
+            return null;
+        }
+    }
+
+    private Long getPassedId(String key){
+        String idValue = wordMap.get(key);
+        if (idValue != null){
+            return Long.parseLong(idValue);
+        } else {
+            return 0L;
+        }
     }
 
     private boolean imageFieldExists(Long modelId){
@@ -213,11 +216,14 @@ public class CardActivity extends AppCompatActivity {
     private Set<String> removeMarkedTag(Long id){
         Set<String> tags = mApi.getNote(id).getTags();
         String tag = "marked";
+        String tagCapitalized = "Marked";
         Log.d(TAG, "Tags: " + tags);
         if (tags.remove(tag)) {
             Log.d(TAG, "removed " + tag + " tag successfully");
+        } else if (tags.remove(tagCapitalized)) {
+            Log.d(TAG, "removed " + tagCapitalized + " tag successfully");
         } else {
-            Log.d(TAG, "Failed to remove " + tag + " from card");
+            Log.d(TAG, "Failed to remove " + tag + " or " + tagCapitalized + " from card");
         }
         return tags;
     }
@@ -262,52 +268,9 @@ public class CardActivity extends AppCompatActivity {
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.action_create) {
-            updateCard();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    /**
-     * Saved the file with the given content URI
-     * @param url the content-URI url of the image
-     * @return the path that the file was saved at
-     */
-    public String createAndSaveFileFromBase64Url(String url) {
-        Log.d(TAG, "createAndSaveFileFromBase64Url() called");
-        //File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS); // save in public external dir
-        File path = getApplicationContext().getExternalFilesDir(null);
-        Log.d(TAG, "Path: " + path);
-        String filetype = url.substring(url.indexOf("/") + 1, url.indexOf(";"));
-        String filename = System.currentTimeMillis() + "." + filetype;
-        File file = new File(path, filename);
-        try {
-            if(!path.exists())
-                path.mkdirs();
-            if(!file.exists())
-                file.createNewFile();
-
-            String base64EncodedString = url.substring(url.indexOf(",") + 1);
-            byte[] decodedBytes = Base64.decode(base64EncodedString, Base64.DEFAULT);
-            OutputStream os = new FileOutputStream(file);
-            os.write(decodedBytes);
-            os.close();
-
-            //Tell the media scanner about the new file so that it is immediately available to the user.
-            scanFile(this,
-                    new String[]{file.toString()}, null,
-                    (path1, uri) -> {
-                        Log.d("ExternalStorage", "Scanned " + path1 + ":");
-                        Log.d("ExternalStorage", "-> uri=" + uri);
-                    });
-
-        } catch (IOException e) {
-            Log.w("ExternalStorage", "Error writing " + file, e);
-            Toast.makeText(getApplicationContext(), R.string.error_downloading, Toast.LENGTH_LONG).show();
-        }
-
-        return file.toString();
+    public void onBackPressed() {
+        super.onBackPressed();
+        setResult(EXIT_RESULT_CODE); //TODO: fix resultCode
+        finish();
     }
 }

@@ -45,6 +45,10 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
     private Map<Integer, String> buttonMap;
     private int kanjiWordIndex;
     private int englishWordIndex;
+    private static final int EXIT_RESULT_CODE = 5;
+    private static final int EMPTY_IMAGE_RETURN_CODE = 1;
+    private static final int MARKED_CARD_RETURN_CODE = 2;
+    private static final int AUTO_CARD_RETURN_CODE = 3;
     private static final int ANKIDROID_PERM_REQUEST = 0;
     private static final int REQUEST_EXTERNAL_STORAGE = 1;
     private static final String[] PERMISSIONS_STORAGE = {
@@ -57,7 +61,6 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         if (requestCode == ANKIDROID_PERM_REQUEST || requestCode == REQUEST_EXTERNAL_STORAGE){
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 checkPermissions();
-                finishCreate();
             } else {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 AlertDialog dialog = builder.setTitle(R.string.permissions_needed)
@@ -80,7 +83,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         appendixText = findViewById(R.id.appendixText);
         setSupportActionBar(findViewById(R.id.toolbar));
         checkPermissions();
-        finishCreate();
+        //finishCreate();
     }
 
     private void checkPermissions(){
@@ -88,6 +91,8 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
             ActivityCompat.requestPermissions(MainActivity.this, new String[]{READ_WRITE_PERMISSION}, ANKIDROID_PERM_REQUEST);
         } else if (shouldRequestStoragePermission()) {
             ActivityCompat.requestPermissions(MainActivity.this, PERMISSIONS_STORAGE, REQUEST_EXTERNAL_STORAGE);
+        } else {
+            finishCreate();
         }
     }
 
@@ -105,6 +110,11 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         return storagePermissionStatus != PackageManager.PERMISSION_GRANTED;
     }
 
+    private void addExampleCard(){
+        CardAdder adder = new CardAdder(this);
+        adder.addCardsToAnkiDroid();
+    }
+
     private void finishCreate(){
         initSpinner(R.id.deckSpinner);
         initSpinner(R.id.modelSpinner);
@@ -113,6 +123,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         initButton(R.id.button_auto_cards);
         initButtonMap();
         initClearPreloadedCardsButton();
+        initAddExampleCardButton();
     }
 
     private void initSpinner(int id){
@@ -136,7 +147,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
                 }
                 @Override
                 public void onNothingSelected(AdapterView<?> arg0) {
-
+                    //Not used
                 }
             });
         }
@@ -169,11 +180,12 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         button.setOnClickListener(v -> {
             Log.d(TAG, "Button pressed");
             String prefKey = getKey(button_id);
+            int returnCode = getReturnCode(button_id);
             Map<String, String> matchingWordInfo = getMatchingWordInfo(prefKey);
             if (matchingWordInfo != null){
                 Intent intent = new Intent(MainActivity.this, CardActivity.class);
                 putAllExtra(intent, matchingWordInfo, prefKey);
-                startActivity(intent);
+                startActivityForResult(intent, returnCode);
             } else {
                 Log.d(TAG,"Could not find any cards");
                 Toast.makeText(this, "Could not find any matching cards", Toast.LENGTH_LONG).show();
@@ -196,8 +208,18 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         }
     }
 
+    private int getReturnCode(int button_id){
+        if (button_id == R.id.button_empty){
+            return EMPTY_IMAGE_RETURN_CODE;
+        } else if (button_id == R.id.button_marked){
+            return MARKED_CARD_RETURN_CODE;
+        } else {
+            return AUTO_CARD_RETURN_CODE;
+        }
+    }
+
     private void putAllExtra(Intent intent, Map<String, String> matchingWordMap, String prefKey){
-        String[] fieldContents = ankiDroidApi.getNote(Long.parseLong(matchingWordMap.get("id"))).getFields();
+        String[] fieldContents = getSavedOrNot(Long.parseLong(matchingWordMap.get("id")));
         intent.putExtra("fields", fieldContents);
         intent.putExtra("prefKey",prefKey);
         intent.putExtra("id",matchingWordMap.get("id"));
@@ -205,6 +227,15 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         intent.putExtra("mid", matchingWordMap.get("mid"));
         intent.putExtra("translation", matchingWordMap.get("translation"));
         intent.putExtra("searchAppendix", appendixText.getText().toString());
+    }
+
+    private String[] getSavedOrNot(Long id){
+        try{
+            return ankiDroidApi.getNote(id).getFields();
+        } catch (NullPointerException e){
+            e.printStackTrace();
+            return new String[]{};
+        }
     }
 
     private void initClearPreloadedCardsButton(){
@@ -222,6 +253,16 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
             editor.apply();
         }
         Toast.makeText(getBaseContext(), "Saved cards deleted", Toast.LENGTH_SHORT).show();
+    }
+
+    private void initAddExampleCardButton(){
+        Button button = findViewById(R.id.add_example_card_btn);
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                addExampleCard();
+            }
+        });
     }
 
     @Override
@@ -252,22 +293,23 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
     private Map<String, String> getMatchingWordInfo(String cardKey) {
         Spinner deckSpinner = findViewById(R.id.deckSpinner);
         Spinner modelSpinner = findViewById(R.id.modelSpinner);
-        CardHandler handler = new CardHandler(this,
+        CardLoader cardLoader = new CardLoader(this);
+        CardHandler cardHandler = new CardHandler(this,
                 (String) deckSpinner.getSelectedItem(),
                 (String) modelSpinner.getSelectedItem(),
                 kanjiWordIndex,
                 englishWordIndex);
-        Map<String, String> savedCard = handler.getSavedCard(cardKey);
+        Map<String, String> savedCard = cardLoader.loadSavedCard(cardKey);
         if (savedCard != null) {
             return savedCard;
         } else {
-            handler.saveAllWithoutImage();
-            handler.saveAllWithTag(cardKey);
+            cardHandler.saveAllWithoutImage();
+            cardHandler.saveAllWithTag(cardKey);
         }
         if (cardKey.equals("no-image")) {
-            return handler.getCardWithoutImage();
+            return cardHandler.getCardWithoutImage();
         } else {
-            return handler.getCardFromTag(cardKey);
+            return cardHandler.getCardFromTag(cardKey);
         }
     }
 
@@ -287,7 +329,6 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
 
     public void logSavedData(){
         for (String s : cardKeys){
-            SharedPreferences sharedPref = getSharedPreferences(s, MODE_PRIVATE);
             Log.d(TAG, "Logging all saved cards for " + s);
             Set<String> nidSet = getCardIdSet(s);
             if (nidSet != null) {
@@ -330,4 +371,36 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         }
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == EXIT_RESULT_CODE){
+            Log.d(TAG, "returned by back button");
+        } else {
+            loadNextCardActivity(requestCode);
+        }
+    }
+
+    private void loadNextCardActivity(int requestCode){
+        String prefKey = "";
+        if (requestCode == EMPTY_IMAGE_RETURN_CODE) {
+            Log.d(TAG, "returned from empty image adder");
+            prefKey = "no-image";
+        } else if (requestCode == MARKED_CARD_RETURN_CODE) {
+            Log.d(TAG, "returned from marked card adder");
+            prefKey = "marked";
+        } else if (requestCode == AUTO_CARD_RETURN_CODE) {
+            Log.d(TAG, "returned from auto card adder");
+            prefKey = "auto";
+        }
+        if (!prefKey.equals("")){
+            CardLoader loader = new CardLoader(this);
+            Map<String, String> savedCard = loader.loadSavedCard(prefKey);
+            if (savedCard != null){
+                Intent intent = new Intent(MainActivity.this, CardActivity.class);
+                putAllExtra(intent, savedCard, prefKey);
+                startActivityForResult(intent, requestCode);
+            }
+        }
+    }
 }

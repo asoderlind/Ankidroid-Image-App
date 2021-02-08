@@ -45,10 +45,9 @@ public class CardHandler {
         if (cardCursor != null) {
             Log.d(TAG, "Count for no images: " + cardCursor.getCount());
             for (int i = cardCursor.getCount() - 1; i > 0; i--) {
-                Map<String, String> cursorInfo = getCursorInfo(cardCursor, i);
-                String fields = cursorInfo.get("flds");
+                String fields = cardCursor.getString(cardCursor.getColumnIndex("flds"));
                 if (!fields.contains("img")) {
-                    return cursorInfo;
+                    return getCursorInfo(cardCursor, i);
                 }
             }
             cardCursor.close();
@@ -88,7 +87,7 @@ public class CardHandler {
         cardMap.put("id", id);
         cardMap.put("mid", mid);
         cardMap.put("flds", flds);
-        Log.d(TAG, "Cursor Info: Id = " + id + ", mid = " + mid + " word = " + word + " translation = " + translation);
+        //Log.d(TAG, "Cursor Info: Id = " + id + ", mid = " + mid + " word = " + word + " translation = " + translation);
         return cardMap;
     }
 
@@ -147,30 +146,11 @@ public class CardHandler {
         }
     }
 
-    public Map<String, String> getSavedCard(String prefKey){
-        Set <String> cardIdSet = getCardIdSet(prefKey);
-        if (cardIdSet != null){
-            if (cardIdSet.size() != 0){
-                String savedNoteString = "";
-                for(String aNidMid: cardIdSet) {
-                    savedNoteString = aNidMid; // get a random element from the set
-                    break;
-                }
-                Map<String, String> cardMap = new HashMap<>();
-                cardMap.put("id", savedNoteString.split(",")[0]);
-                cardMap.put("mid", savedNoteString.split(",")[1]);
-                cardMap.put("word", savedNoteString.split(",")[2]);
-                cardMap.put("translation", savedNoteString.split(",")[3]);
-                Log.d(TAG, "Saved card: [" + savedNoteString + "]");
-                return cardMap;
-            }
-        }
-        return null;
-    }
-
     private Set<String> getCardIdSet(String prefKey){
         SharedPreferences sharedPrefs = mContext.getSharedPreferences(prefKey, Context.MODE_PRIVATE);
         return sharedPrefs.getStringSet(prefKey, null);
     }
+
+
 
 }

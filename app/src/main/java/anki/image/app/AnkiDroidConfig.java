@@ -11,37 +11,31 @@ import java.util.Set;
 /** Some fields to store configuration details for AnkiDroid **/
 final class AnkiDroidConfig {
     // Name of deck which will be created in AnkiDroid
-    public static final String DECK_NAME = "API Sample";
+    public static final String DECK_NAME = "Example Deck";
     // Name of model which will be created in AnkiDroid
-    public static final String MODEL_NAME = "com.ichi2.apisample";
+    public static final String MODEL_NAME = "Example Model";
     // Optional space separated list of tags to add to every note
-    public static final Set<String> TAGS = new HashSet<>(Collections.singletonList("API_Sample_App"));
+    public static final Set<String> TAGS = new HashSet<>(Collections.singletonList("Marked"));
     // List of field names that will be used in AnkiDroid model
-    public static final String[] FIELDS = {"Expression","Reading","Meaning","Furigana","Grammar","Sentence",
-            "SentenceFurigana","SentenceMeaning"};
+    public static final String[] FIELDS = {"Expression","Reading","Meaning","Furigana","Grammar","Sentence", "SentenceFurigana","SentenceMeaning", "Image"};
     // List of card names that will be used in AnkiDroid (one for each direction of learning)
     public static final String[] CARD_NAMES = {"Japanese>English", "English>Japanese"};
     // CSS to share between all the cards (optional). User will need to install the NotoSans font by themselves
     public static final String CSS = ".card {\n" +
-            " font-family: NotoSansJP;\n" +
             " font-size: 24px;\n" +
             " text-align: center;\n" +
             " color: black;\n" +
             " background-color: white;\n" +
             " word-wrap: break-word;\n" +
-            "}\n" +
-            "@font-face { font-family: \"NotoSansJP\"; src: url('_NotoSansJP-Regular.otf'); }\n" +
-            "@font-face { font-family: \"NotoSansJP\"; src: url('_NotoSansJP-Bold.otf'); font-weight: bold; }\n" +
-            "\n" +
             ".big { font-size: 48px; }\n" +
             ".small { font-size: 18px;}\n";
     // Template for the question of each card
-    static final String QFMT1 = "<div class=big>{{Expression}}</div><br>{{Grammar}}";
-    static final String QFMT2 = "{{Meaning}}<br><br><div class=small>{{Grammar}}<br><br>({{SentenceMeaning}})</div>";
+    static final String QFMT1 = "<div class=big>{{Expression}}</div><br>{{Grammar}}<div>{{Image}}</div>";
+    static final String QFMT2 = "{{Meaning}}<br><br><div class=small>{{Grammar}}<br><br>({{SentenceMeaning}})</div><div>{{Image}}</div>";
     public static final String[] QFMT = {QFMT1, QFMT2};
     // Template for the answer (use identical for both sides)
     static final String AFMT1 = "<div class=big>{{furigana:Furigana}}</div><br>{{Meaning}}\n" +
-            "<br><br>\n" +
+            "<br>{{Image}}<br>\n" +
             "{{furigana:SentenceFurigana}}<br>\n" +
             "<a href=\"#\" onclick=\"document.getElementById('hint').style.display='block';return false;\">Sentence Translation</a>\n" +
             "<div id=\"hint\" style=\"display: none\">{{SentenceMeaning}}</div>\n" +
@@ -66,6 +60,7 @@ final class AnkiDroidConfig {
                 "放蕩[ほうとう] 生活[せいかつ]を 送[おく]る。"};
         final String[] EXAMPLE_SENTENCE_MEANING = {"We have no such example", "Oh, I lost the data！",
                 "I lead a fast way of living."};
+        final String[] EXAMPLE_IMAGE = {"", "", ""};
 
         List<Map<String, String>> data = new ArrayList<>();
         for (int idx = 0; idx < EXAMPLE_WORDS.length; idx++) {
@@ -78,6 +73,7 @@ final class AnkiDroidConfig {
             hm.put(FIELDS[5], EXAMPLE_SENTENCE[idx]);
             hm.put(FIELDS[6], EXAMPLE_SENTENCE_FURIGANA[idx]);
             hm.put(FIELDS[7], EXAMPLE_SENTENCE_MEANING[idx]);
+            hm.put(FIELDS[8], EXAMPLE_IMAGE[idx]);
             data.add(hm);
         }
         return data;
