@@ -3,6 +3,7 @@ package anki.image.app;
 import com.google.android.material.tabs.TabLayout;
 import com.ichi2.anki.api.AddContentApi;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.FileProvider;
@@ -31,7 +32,8 @@ import java.util.Set;
 
 public class CardActivity extends AppCompatActivity {
     private static final String TAG = "CardActivity : ";
-    private static final int EXIT_RESULT_CODE = 5;
+    public static final int EXIT_RESULT_CODE = 5;
+    public static final int UPDATE_RESULT_CODE = 4;
     private ImageFragment mImageFragment;
     private AddContentApi mApi;
     private AnkiDroidHelper mAnkiDroid;
@@ -66,10 +68,23 @@ public class CardActivity extends AppCompatActivity {
         wordMap.put("id", intent.getStringExtra("id"));
         wordMap.put("word", intent.getStringExtra("word"));
         wordMap.put("mid", intent.getStringExtra("mid"));
-        wordMap.put("translation", intent.getStringExtra("translation"));
-        mAppendix = intent.getStringExtra("appendix");
+        wordMap.put("translation", getTranslationText(intent));
+        mAppendix = getAppendixText(intent);
         mPrefKey = intent.getStringExtra("prefKey");
         mFields = intent.getStringArrayExtra("fields");
+    }
+
+    private String getTranslationText(Intent intent){
+        return intent.getStringExtra("translation");
+    }
+
+    private String getAppendixText(Intent intent){
+        String text = intent.getStringExtra("searchAppendix");
+        if (text != null){
+            return text;
+        } else {
+            return "";
+        }
     }
 
     private ViewPager initViewPager(){
@@ -98,12 +113,9 @@ public class CardActivity extends AppCompatActivity {
         }
 
         @Override
+        @NonNull
         public Fragment getItem(int position) {
-            if (position == 0) {
-                return mImageFragment; // TODO: add other fragments
-            } else {
-                return mImageFragment;
-            }
+            return mImageFragment; // TODO: add other fragments
         }
 
         @Override
@@ -113,9 +125,7 @@ public class CardActivity extends AppCompatActivity {
 
         @Override
         public CharSequence getPageTitle(int position) {
-            if (position == 0) {
-                return getString(R.string.images); // TODO: add more fragment titles
-            }
+            // TODO: add more fragment titles
             return getString(R.string.images);
         }
     }
@@ -165,6 +175,7 @@ public class CardActivity extends AppCompatActivity {
             Toast.makeText(this, "Image download failed", Toast.LENGTH_LONG).show();
             Log.d(TAG, "The file downloader failed (null returned)");
         }
+        setResult(UPDATE_RESULT_CODE);
         finish();
     }
 
@@ -228,19 +239,10 @@ public class CardActivity extends AppCompatActivity {
         return tags;
     }
 
-    private String getNidSetObjectName(){
-        String nidSetObjectName = wordMap.get("id") + ",";
-        nidSetObjectName += wordMap.get("mid") + ",";
-        nidSetObjectName += wordMap.get("word") + ",";
-        nidSetObjectName += wordMap.get("translation");
-        Log.d(TAG, "nidSetObjectName: " + nidSetObjectName);
-        return nidSetObjectName;
-    }
-
     private void removeObjectFromNidSet(){
         SharedPreferences sharedPref = getSharedPreferences(mPrefKey, MODE_PRIVATE);
         Set<String> nidSet = getNidSet(sharedPref);
-        String nidSetObjectName = getNidSetObjectName();
+        String nidSetObjectName = CardHandler.stringifyCardInfo(wordMap);
         try {
             boolean removedSuccessfully = nidSet.remove(nidSetObjectName);
             if (removedSuccessfully){
@@ -269,8 +271,8 @@ public class CardActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
+        setResult(EXIT_RESULT_CODE);
         super.onBackPressed();
-        setResult(EXIT_RESULT_CODE); //TODO: fix resultCode
         finish();
     }
 }

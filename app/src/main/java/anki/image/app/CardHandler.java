@@ -13,11 +13,10 @@ import com.ichi2.anki.api.NoteInfo;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 
 public class CardHandler {
-    final String TAG = "CardHandler ::";
+    final String TAG = "CardHandler :";
     final AddContentApi mAnkiDroidApi;
     final String mDeckName;
     final String mModelName;
@@ -36,41 +35,58 @@ public class CardHandler {
         mEnglishField = englishField;
     }
 
-    public Map<String, String> getCardWithoutImage(){
+    public void preloadAllWithoutImage() {
+        Log.d(TAG, "preloadAllWithoutImageFast() called");
         Cursor cardCursor = mContentResolver.query(FlashCardsContract.Note.CONTENT_URI,
                 null,
-                "deck:\"" + mDeckName + "\"" + " note:\"" + mModelName + "\"",
+                "deck:\"" + mDeckName + "\"" + " note:\"" + mModelName + "\"" + " -<img*src=*>",
                 null,
                 null);
-        if (cardCursor != null) {
-            Log.d(TAG, "Count for no images: " + cardCursor.getCount());
-            for (int i = cardCursor.getCount() - 1; i > 0; i--) {
-                String fields = cardCursor.getString(cardCursor.getColumnIndex("flds"));
-                if (!fields.contains("img")) {
-                    return getCursorInfo(cardCursor, i);
-                }
-            }
-            cardCursor.close();
-        }
-        return null;
+        Set <String> noteStringSet = getMatchingCardSet(cardCursor);
+        addSetToSharedPrefs(noteStringSet, "no-image");
     }
 
-    public Map<String, String> getCardFromTag(String tag){
+    public void preloadAllWithTag(String tag){
         Cursor cardCursor = mContentResolver.query(FlashCardsContract.Note.CONTENT_URI,
                 null,
                 "deck:\"" + mDeckName + "\"" + " tag:" + tag,
                 null,
                 null);
-        if (cardCursor != null) {
-            Log.d(TAG, "Count for " + tag + ": " + cardCursor.getCount());
-            Random r = new Random();
-            int randomPos = r.nextInt(cardCursor.getCount());
-            Map<String, String> cursorInfo = getCursorInfo(cardCursor, randomPos);
-            cardCursor.close();
-            return cursorInfo;
-        } else {
-            return null;
+        Set <String> noteStringSet = getMatchingCardSet(cardCursor);
+        addSetToSharedPrefs(noteStringSet, tag);
+    }
+
+    private Set<String> getMatchingCardSet(Cursor cursor){
+        int cardCount = getCount(cursor);
+        Log.d(TAG, "cardCount is: " + cardCount);
+        Set<String> noteStringSet = new HashSet<>();
+        for (int i = 0; i < cardCount; i++) {
+            Map<String, String> cursorInfo = getCursorInfo(cursor, i);
+            String cardString = stringifyCardInfo(cursorInfo);
+            noteStringSet.add(cardString);
         }
+        if (cursor != null) cursor.close();
+        return noteStringSet;
+    }
+
+    static String stringifyCardInfo(Map<String, String> cursorInfo){
+        String delimiter = "\t";
+        String returnString = cursorInfo.get("id") + delimiter +
+                            cursorInfo.get("mid") + delimiter +
+                            cursorInfo.get("word") + delimiter +
+                            cursorInfo.get("translation");
+        Log.d("cardHandler ::", "card info string is: " + returnString);
+        return returnString;
+    }
+
+    private int getCount(Cursor cardCursor){
+        int count = 0;
+        try{
+            count = cardCursor.getCount();
+        } catch (NullPointerException e){
+            e.printStackTrace();
+        }
+        return count;
     }
 
     private Map<String, String> getCursorInfo(Cursor cursor, int position){
@@ -87,70 +103,14 @@ public class CardHandler {
         cardMap.put("id", id);
         cardMap.put("mid", mid);
         cardMap.put("flds", flds);
-        //Log.d(TAG, "Cursor Info: Id = " + id + ", mid = " + mid + " word = " + word + " translation = " + translation);
         return cardMap;
     }
 
-    public void saveAllWithoutImage() {
-        Cursor cardCursor = mContentResolver.query(FlashCardsContract.Note.CONTENT_URI,
-                null,
-                "deck:\"" + mDeckName + "\"" + " note:\"" + mModelName + "\"",
-                null,
-                null);
-        if (cardCursor != null) {
-            Set<String> nidSet = new HashSet<>();
-            Log.d(TAG, "Count for no images: " + cardCursor.getCount());
-            for (int i = 0; i < cardCursor.getCount(); i++) {
-                Map<String, String> cursorInfo = getCursorInfo(cardCursor, i);
-                String fields = cursorInfo.get("flds");
-                if (!fields.contains("img")) {
-                    nidSet.add(cursorInfo.get("id") +
-                            "," + cursorInfo.get("mid") +
-                            "," + cursorInfo.get("word") +
-                            "," + cursorInfo.get("translation"));
-                }
-            }
-            cardCursor.close();
-            Log.d(TAG, "Total nidset: " + nidSet);
-            SharedPreferences.Editor editor = mContext.getSharedPreferences("no-image", Context.MODE_PRIVATE).edit();
-            editor.putStringSet("no-image", nidSet);
-            editor.apply();
-        } else {
-            Log.d(TAG, "The cursor returned null for saveAllWithoutImages");
-        }
+    private void addSetToSharedPrefs(Set<String> set, String preferenceName){
+        Log.d(TAG, "Adding String-set " + set);
+        Log.d(TAG, "to preference " + preferenceName);
+        SharedPreferences.Editor editor = mContext.getSharedPreferences(preferenceName, Context.MODE_PRIVATE).edit();
+        editor.putStringSet(preferenceName, set);
+        editor.apply();
     }
-
-    public void saveAllWithTag(String tag){
-        Cursor cardCursor = mContentResolver.query(FlashCardsContract.Note.CONTENT_URI,
-                null,
-                "deck:\"" + mDeckName + "\"" + " tag:" + tag,
-                null,
-                null);
-        if (cardCursor != null) {
-            Set<String> noteStringSet = new HashSet<>();
-            for (int i = 0; i < cardCursor.getCount(); i++) {
-                Map<String, String> cursorInfo = getCursorInfo(cardCursor, i);
-                noteStringSet.add(cursorInfo.get("id") +
-                        "," + cursorInfo.get("mid") +
-                        "," + cursorInfo.get("word") +
-                        "," + cursorInfo.get("translation"));
-            }
-            cardCursor.close();
-            Log.d(TAG, "Total nidset: " + noteStringSet);
-            Log.d(TAG, "Saving data with tag: " + tag);
-            SharedPreferences.Editor editor = mContext.getSharedPreferences(tag, Context.MODE_PRIVATE).edit();
-            editor.putStringSet(tag, noteStringSet);
-            editor.apply();
-        } else {
-            Log.d(TAG, "The cursor returned null for saveAllWithTag");
-        }
-    }
-
-    private Set<String> getCardIdSet(String prefKey){
-        SharedPreferences sharedPrefs = mContext.getSharedPreferences(prefKey, Context.MODE_PRIVATE);
-        return sharedPrefs.getStringSet(prefKey, null);
-    }
-
-
-
 }

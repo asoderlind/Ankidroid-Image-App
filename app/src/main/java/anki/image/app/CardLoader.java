@@ -10,30 +10,40 @@ import java.util.Set;
 
 public class CardLoader {
     private final Context mContext;
-    private static final String TAG = "CardLoader ::";
+    private static final String TAG = "CardLoader :";
 
     public CardLoader(Context context){
         mContext = context;
     }
-    public Map<String, String> loadSavedCard(String prefKey){
+
+    public Map<String, String> preloadCard(String prefKey){
+        Log.d(TAG, "preloadCard() called");
         Set<String> cardIdSet = getCardIdSet(prefKey);
         if (cardIdSet != null){
             if (cardIdSet.size() != 0){
-                String savedNoteString = "";
-                for(String aNidMid: cardIdSet) {
-                    savedNoteString = aNidMid; // get a random element from the set
-                    break;
+                for(String cardInfoSet: cardIdSet) {
+                    return getCardInfoString(cardInfoSet);
                 }
-                Map<String, String> cardMap = new HashMap<>();
-                cardMap.put("id", savedNoteString.split(",")[0]);
-                cardMap.put("mid", savedNoteString.split(",")[1]);
-                cardMap.put("word", savedNoteString.split(",")[2]);
-                cardMap.put("translation", savedNoteString.split(",")[3]);
-                Log.d(TAG, "Saved card: [" + savedNoteString + "]");
-                return cardMap;
             }
+        } else {
+            Log.d(TAG, "No preloaded card with tag '" + prefKey + "' found..");
         }
         return null;
+    }
+
+    public Map<String, String> getCardInfoString(String cardInfoString){
+        Log.d(TAG, "getCardInfoString() called on " + cardInfoString);
+        String delimiter = "\t";
+        Map<String, String> cardMap = new HashMap<>();
+        String[] splitString = cardInfoString.split(delimiter);
+        if (splitString.length > 1) {
+            cardMap.put("id", splitString[0]);
+            cardMap.put("mid", splitString[1]);
+            cardMap.put("word", splitString[2]);
+            cardMap.put("translation", splitString[3]);
+        }
+        Log.d(TAG, "returning " + cardMap);
+        return cardMap;
     }
 
     private Set<String> getCardIdSet(String prefKey){

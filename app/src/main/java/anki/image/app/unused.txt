@@ -110,3 +110,59 @@
             }
         }
     }
+
+        public Map<String, String> getCardWithoutImage(){
+            Log.d(TAG, "getCardWithoutImage() called");
+            Cursor cardCursor = mContentResolver.query(FlashCardsContract.Note.CONTENT_URI,
+                    null,
+                    "deck:\"" + mDeckName + "\"" + " note:\"" + mModelName + "\"",
+                    null,
+                    null);
+            if (cardCursor != null) {
+                Log.d(TAG, "Count for no images: " + cardCursor.getCount());
+                for (int i = cardCursor.getCount() - 1; i > -1; i--) {
+                    if (i % 100 == 0) Log.d(TAG, "Index at " + i + "...");
+                    cardCursor.moveToPosition(i);
+                    int columnIndex = cardCursor.getColumnIndex("flds");
+                    String fields = cardCursor.getString(columnIndex);
+                    if (!fields.contains("img")) {
+                        Log.d(TAG, "Found card without image!");
+                        return getCursorInfo(cardCursor, i);
+                    }
+                }
+                cardCursor.close();
+            }
+            return null;
+        }
+
+ ##################################################
+ ##############  LAYOUT
+ ##################################################
+
+             <TextView
+                 android:layout_width="wrap_content"
+                 android:layout_height="wrap_content"
+                 android:labelFor="@+id/deckSpinner"
+                 android:layout_gravity="center"
+                 android:text="Add example card"/>
+
+             <Button
+                 android:id="@+id/add_example_card_btn"
+                 android:layout_width="wrap_content"
+                 android:layout_height="wrap_content"
+                 android:text="Add card"
+                 android:layout_gravity="center"/>
+
+             <TextView
+                 android:layout_width="wrap_content"
+                 android:layout_height="wrap_content"
+                 android:layout_gravity="center"
+                 android:labelFor="@+id/deckSpinner"
+                 android:text="Picks a card at random"/>
+
+             <Button
+                 android:id="@+id/button_auto_cards"
+                 android:layout_width="wrap_content"
+                 android:layout_height="wrap_content"
+                 android:layout_gravity="center"
+                 android:text="@string/auto_cards"/>
