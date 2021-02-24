@@ -37,13 +37,45 @@ public class CardLoader {
         Map<String, String> cardMap = new HashMap<>();
         String[] splitString = cardInfoString.split(delimiter);
         if (splitString.length > 1) {
-            cardMap.put("id", splitString[0]);
-            cardMap.put("mid", splitString[1]);
-            cardMap.put("word", splitString[2]);
-            cardMap.put("translation", splitString[3]);
+            cardMap.put("id", getId(splitString));
+            cardMap.put("mid", getMid(splitString));
+            cardMap.put("word", getWord(splitString));
+            cardMap.put("translation", getTranslation(splitString));
         }
         Log.d(TAG, "returning " + cardMap);
         return cardMap;
+    }
+
+    private String getId(String[] infoArray){
+        try{
+            return infoArray[0];
+        } catch (IndexOutOfBoundsException e){
+            return "";
+        }
+    }
+
+    private String getMid(String[] infoArray){
+        try{
+            return infoArray[1];
+        } catch (IndexOutOfBoundsException e){
+            return "";
+        }
+    }
+
+    private String getWord(String[] infoArray){
+        try{
+            return infoArray[2];
+        } catch (IndexOutOfBoundsException e){
+            return "";
+        }
+    }
+
+    private String getTranslation(String[] infoArray){
+        try{
+            return infoArray[3];
+        } catch (IndexOutOfBoundsException e){
+            return "";
+        }
     }
 
     private Set<String> getCardIdSet(String prefKey){

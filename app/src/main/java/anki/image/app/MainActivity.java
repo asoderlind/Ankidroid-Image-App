@@ -54,6 +54,8 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
             Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.WRITE_EXTERNAL_STORAGE
     };
+    //TODO: find way to get all tags and put them in a spinner
+    //TODO: make spinner for choosing fields
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -220,8 +222,8 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
     }
 
     private void putAllExtra(Intent intent, Map<String, String> matchingWordMap, String prefKey){
-        String cardId = getCardId(matchingWordMap);
-        String[] fieldContents = getContentsIfExists(Long.parseLong(cardId));
+        Long cardId = getCardId(matchingWordMap);
+        String[] fieldContents = getContentsIfExists(cardId);
         intent.putExtra("fields", fieldContents);
         intent.putExtra("prefKey",prefKey);
         intent.putExtra("id",matchingWordMap.get("id"));
@@ -231,13 +233,14 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         intent.putExtra("searchAppendix", getAppendixText());
     }
 
-    private String getCardId(Map<String, String> wordMap){
+    private Long getCardId(Map<String, String> wordMap){
         try{
-            return wordMap.get("id");
-        } catch (NullPointerException e){
+            String cardId = wordMap.get("id");
+            return Long.parseLong(cardId);
+        } catch (NumberFormatException e){
             e.printStackTrace();
         }
-        return "0";
+        return 0L;
     }
 
     private String[] getContentsIfExists(Long id){

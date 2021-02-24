@@ -40,16 +40,16 @@ public class CardActivity extends AppCompatActivity {
     private String mAppendix;
     private String mPrefKey;
     private String [] mFields;
-    private Map<String, String> wordMap;
+    private Map<String, String> cardInfo;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate() called");
         initAnkiApi();
-        getAllExtra();
-        setTitle(wordMap.get("word") + mAppendix + ", " + wordMap.get("translation"));
-        mImageFragment = ImageFragment.newInstance(wordMap.get("word"), mAppendix);
+        cardInfo = getAllExtra();
+        setTitle(cardInfo.get("word") + mAppendix + ", " + cardInfo.get("translation"));
+        mImageFragment = ImageFragment.newInstance(cardInfo.get("word"), mAppendix);
         setContentView(R.layout.activity_card);
         Toolbar myToolbar = findViewById(R.id.my_toolbar);
         setSupportActionBar(myToolbar);
@@ -62,9 +62,9 @@ public class CardActivity extends AppCompatActivity {
         mAnkiDroid = new AnkiDroidHelper(this);
     }
 
-    private void getAllExtra(){
+    private Map<String, String> getAllExtra(){
         Intent intent = getIntent();
-        wordMap = new HashMap<>();
+        Map<String, String> wordMap = new HashMap<>();
         wordMap.put("id", intent.getStringExtra("id"));
         wordMap.put("word", intent.getStringExtra("word"));
         wordMap.put("mid", intent.getStringExtra("mid"));
@@ -72,6 +72,7 @@ public class CardActivity extends AppCompatActivity {
         mAppendix = getAppendixText(intent);
         mPrefKey = intent.getStringExtra("prefKey");
         mFields = intent.getStringArrayExtra("fields");
+        return wordMap;
     }
 
     private String getTranslationText(Intent intent){
@@ -161,7 +162,7 @@ public class CardActivity extends AppCompatActivity {
             if (noteHasImageField) {
                 String[] updatedFieldContents = replaceImageField(modelId, addedImageFileNames);
                 Set<String> updatedTags = removeMarkedTag(id);
-                removeObjectFromNidSet();
+                removeObjectFromNidSet(cardInfo);
                 Log.d(TAG, "New Field Contents: " + Arrays.toString(updatedFieldContents));
                 boolean updateSucceed = mApi.updateNoteFields(id, updatedFieldContents);
                 boolean tagUpdateSucceed = mApi.updateNoteTags(id, updatedTags);
@@ -187,8 +188,7 @@ public class CardActivity extends AppCompatActivity {
             Uri contentUri = FileProvider.getUriForFile(getApplicationContext(), "com.fileprovider", path);
             Log.d(TAG, "contentUri: " + contentUri);
             getApplicationContext().grantUriPermission("com.ichi2.anki", contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            // returns filename if success otherwise null
-            return mAnkiDroid.addMediaFromUri(contentUri, "myImageFile", "image");
+            return mAnkiDroid.addMediaFromUri(contentUri, "myImageFile", "image");      // returns filename if success otherwise null
         } else {
             Log.d(TAG, "path does not exist");
             return null;
@@ -196,7 +196,7 @@ public class CardActivity extends AppCompatActivity {
     }
 
     private Long getPassedId(String key){
-        String idValue = wordMap.get(key);
+        String idValue = cardInfo.get(key);
         if (idValue != null){
             return Long.parseLong(idValue);
         } else {
@@ -239,10 +239,10 @@ public class CardActivity extends AppCompatActivity {
         return tags;
     }
 
-    private void removeObjectFromNidSet(){
+    private void removeObjectFromNidSet(Map<String, String> wordInfo){
         SharedPreferences sharedPref = getSharedPreferences(mPrefKey, MODE_PRIVATE);
         Set<String> nidSet = getNidSet(sharedPref);
-        String nidSetObjectName = CardHandler.stringifyCardInfo(wordMap);
+        String nidSetObjectName = CardHandler.stringifyCardInfo(wordInfo);
         try {
             boolean removedSuccessfully = nidSet.remove(nidSetObjectName);
             if (removedSuccessfully){
