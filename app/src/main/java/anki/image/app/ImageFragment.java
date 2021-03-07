@@ -38,6 +38,7 @@ public class ImageFragment extends Fragment {
     private final ArrayList<String> mSelected = new ArrayList<>();
     private String mImagePickerJs;
     private String mTargetUrl;
+    private boolean mJsIsLoaded = false;
 
     public static ImageFragment newInstance(String word, String appendix) {
         ImageFragment fragment = new ImageFragment();
@@ -122,13 +123,11 @@ public class ImageFragment extends Fragment {
                     settings.setBlockNetworkImage(false);
                     progress.setVisibility(View.GONE);
                     mWebView.setVisibility(View.VISIBLE);
-                } else if (Objects.equals(url, GOOGLE_DEFAULT)){
+                } else if (!mJsIsLoaded) {
+                    mJsIsLoaded = true;
                     Log.d(TAG, "URL: " + url);
-                    Log.d(TAG, "loading javascript url");
+                    Log.d(TAG, "loading javascript once..");
                     view.loadUrl("javascript:" + getImagePickerJs() + "getPickerHtml();");
-                } else {
-                    Log.d(TAG, "URL: " + url);
-                    Log.d(TAG, "Fully loaded url detected");
                 }
             }
         });

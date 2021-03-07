@@ -47,6 +47,7 @@ public class CardHandler {
     }
 
     public void preloadAllWithTag(String tag){
+        Log.d(TAG, "preloadAllWithTag() called");
         Cursor cardCursor = mContentResolver.query(FlashCardsContract.Note.CONTENT_URI,
                 null,
                 "deck:\"" + mDeckName + "\"" + " tag:" + tag,
@@ -100,6 +101,8 @@ public class CardHandler {
         Map<String, String> cardMap = new HashMap<>();
         cardMap.put("word", word);
         cardMap.put("translation", translation);
+        //Log.d("cardHandler ::", "word at index " + mKanjiField + " is " + word);
+        //Log.d("cardHandler ::", "translation at index " + mEnglishField + " is " + translation);
         cardMap.put("id", id);
         cardMap.put("mid", mid);
         cardMap.put("flds", flds);
