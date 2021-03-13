@@ -31,4 +31,5 @@
     <string name="storage_needed">Storage permissions are needed for this app</string>
     <string name="erase_data_title">Erasing local data</string>
     <string name="erase_data_long">Are you sure you want to erase all saved lists? (this will force an re-check</string>
+    <string name="action_create_no_image">No Image</string>
 </resources>

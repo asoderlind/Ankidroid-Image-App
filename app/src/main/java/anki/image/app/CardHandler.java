@@ -39,7 +39,7 @@ public class CardHandler {
         Log.d(TAG, "preloadAllWithoutImageFast() called");
         Cursor cardCursor = mContentResolver.query(FlashCardsContract.Note.CONTENT_URI,
                 null,
-                "deck:\"" + mDeckName + "\"" + " note:\"" + mModelName + "\"" + " -<img*src=*>",
+                "deck:\"" + mDeckName + "\"" + " note:\"" + mModelName + "\"" + " -<img*src=*>" + " -tag:no_image",
                 null,
                 null);
         Set <String> noteStringSet = getMatchingCardSet(cardCursor);

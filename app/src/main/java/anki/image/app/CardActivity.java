@@ -142,6 +142,9 @@ public class CardActivity extends AppCompatActivity {
         if (item.getItemId() == R.id.action_create) {
             updateCard();
             return true;
+        } else if (item.getItemId() == R.id.action_create_no_image) {
+            updateNoImage();
+            return true;
         }
         return super.onOptionsItemSelected(item);
     }
@@ -175,6 +178,29 @@ public class CardActivity extends AppCompatActivity {
         } else {
             Toast.makeText(this, "Image download failed", Toast.LENGTH_LONG).show();
             Log.d(TAG, "The file downloader failed (null returned)");
+        }
+        setResult(UPDATE_RESULT_CODE);
+        finish();
+    }
+
+    private void updateNoImage(){
+        Log.d(TAG, "updateNoImage() called");
+        long id = getPassedId("id");
+        long modelId = getPassedId("mid");
+        boolean noteHasImageField = imageFieldExists(modelId);
+        if (noteHasImageField) {
+            String[] updatedFieldContents = removeImageField(modelId);
+            Set<String> updatedTags = removeMarkedTag(id);
+            updatedTags = addNoImageTag(updatedTags);
+            removeObjectFromNidSet(cardInfo);
+            Log.d(TAG, "New Field Contents: " + Arrays.toString(updatedFieldContents));
+            boolean updateSucceed = mApi.updateNoteFields(id, updatedFieldContents);
+            boolean tagUpdateSucceed = mApi.updateNoteTags(id, updatedTags);
+            Toast.makeText(this, !updateSucceed ? getString(R.string.failed_add_card) : getString(R.string.card_updated), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, !tagUpdateSucceed ? getString(R.string.failed_change_tag) : getString(R.string.tag_updated), Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(this, "Image field not found", Toast.LENGTH_LONG).show();
+            Log.d(TAG, "The image field was not found");
         }
         setResult(UPDATE_RESULT_CODE);
         finish();
@@ -224,6 +250,17 @@ public class CardActivity extends AppCompatActivity {
         return fieldContents;
     }
 
+    private String[] removeImageField(Long modelId){
+        String[] fieldContents = mFields;
+        String[] fieldNames = mApi.getFieldList(modelId);
+        for(int i=0; i < fieldNames.length; i++){
+            if(fieldNames[i].equals("Image")){
+                fieldContents[i] = "";
+            }
+        }
+        return fieldContents;
+    }
+
     private Set<String> removeMarkedTag(Long id){
         Set<String> tags = mApi.getNote(id).getTags();
         String tag = "marked";
@@ -236,6 +273,14 @@ public class CardActivity extends AppCompatActivity {
         } else {
             Log.d(TAG, "Failed to remove " + tag + " or " + tagCapitalized + " from card");
         }
+        return tags;
+    }
+
+    private Set<String> addNoImageTag(Set<String> tags){
+        String no_image_tag = "no_image";
+        Log.d(TAG, "Tags: " + tags);
+        tags.add(no_image_tag);
+        Log.d(TAG, "Updated tags: " + tags);
         return tags;
     }
 
