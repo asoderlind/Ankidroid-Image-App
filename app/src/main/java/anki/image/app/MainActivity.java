@@ -120,10 +120,10 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         initSpinner(R.id.modelSpinner);
         initButton(R.id.button_empty);
         initButton(R.id.button_marked);
-        //initAddTestCardsButton();
         initButtonMap();
         initClearPreloadedCardsButton();
-        initAddExampleCardButton();
+        clearPreloadedCards();
+        //initAddExampleCardButton();
     }
 
     private void initSpinner(int id){
@@ -191,13 +191,6 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
                 Log.d(TAG,"Could not find any cards");
                 Toast.makeText(this, "Could not find any matching cards", Toast.LENGTH_LONG).show();
             }
-        });
-    }
-
-    private void initAddTestCardsButton(int button_id){
-        Button button = findViewById(button_id);
-        button.setOnClickListener(v -> {
-            addExampleCard();
         });
     }
 
