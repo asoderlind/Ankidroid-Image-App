@@ -55,6 +55,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
     };
     //TODO: find way to get all tags and put them in a spinner
     //TODO: make spinner for choosing fields
+    //TODO: make button to choose "no image"
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -119,7 +120,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         initSpinner(R.id.modelSpinner);
         initButton(R.id.button_empty);
         initButton(R.id.button_marked);
-        //initButton(R.id.button_auto_cards);
+        //initAddTestCardsButton();
         initButtonMap();
         initClearPreloadedCardsButton();
         initAddExampleCardButton();
@@ -190,6 +191,13 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
                 Log.d(TAG,"Could not find any cards");
                 Toast.makeText(this, "Could not find any matching cards", Toast.LENGTH_LONG).show();
             }
+        });
+    }
+
+    private void initAddTestCardsButton(int button_id){
+        Button button = findViewById(button_id);
+        button.setOnClickListener(v -> {
+            addExampleCard();
         });
     }
 
