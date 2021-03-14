@@ -32,7 +32,6 @@ import java.util.Objects;
 public class ImageFragment extends Fragment {
 
     static final String GSTATIC_SERVER = "https://encrypted-tbn0.gstatic.com/";
-    static final String GOOGLE_DEFAULT = "https://www.google.co.in/";
     static final String TAG = "ImageFragment : ";
     private WebView mWebView;
     private final ArrayList<String> mSelected = new ArrayList<>();
