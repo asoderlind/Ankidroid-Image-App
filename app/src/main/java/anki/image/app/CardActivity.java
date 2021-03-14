@@ -42,6 +42,7 @@ public class CardActivity extends AppCompatActivity {
     private String mPrefKey;
     private String [] mFields;
     private Map<String, String> cardInfo;
+    //TODO: definition field more general
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

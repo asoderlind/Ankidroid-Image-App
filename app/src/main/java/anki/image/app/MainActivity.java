@@ -54,8 +54,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
             Manifest.permission.WRITE_EXTERNAL_STORAGE
     };
     //TODO: find way to get all tags and put them in a spinner
-    //TODO: make spinner for choosing fields
-    //TODO: make button to choose "no image"
+    //TODO: make spinner for choosing fields (jap, eng, def)
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
