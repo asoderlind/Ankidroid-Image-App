@@ -35,6 +35,7 @@ public class CardActivity extends AppCompatActivity {
     public static final int EXIT_RESULT_CODE = 5;
     public static final int UPDATE_RESULT_CODE = 4;
     private ImageFragment mImageFragment;
+    private DefinitionFragment mDefinitionFragment;
     private AddContentApi mApi;
     private AnkiDroidHelper mAnkiDroid;
     private String mAppendix;
@@ -49,7 +50,13 @@ public class CardActivity extends AppCompatActivity {
         initAnkiApi();
         cardInfo = getAllExtra();
         setTitle(cardInfo.get("word") + mAppendix + ", " + cardInfo.get("translation"));
+
         mImageFragment = ImageFragment.newInstance(cardInfo.get("word"), mAppendix);
+
+        String definitionHtml = getDefinitionHtml(cardInfo.get("word"));
+        boolean isHtml = definitionHtml != null;
+        mDefinitionFragment = DefinitionFragment.newInstance(definitionHtml, isHtml);
+
         setContentView(R.layout.activity_card);
         Toolbar myToolbar = findViewById(R.id.my_toolbar);
         setSupportActionBar(myToolbar);
@@ -88,6 +95,23 @@ public class CardActivity extends AppCompatActivity {
         }
     }
 
+    private String getDefinitionHtml(String word){
+        long modelId = getPassedId("mid");
+        String definitionField = getDefinitionField(modelId);
+        return definitionField;
+    }
+
+    private String getDefinitionField(long mid){
+        String[] fieldContents = mFields;
+        String[] fieldNames = mApi.getFieldList(mid);
+        for(int i=0; i < fieldNames.length; i++){
+            if(fieldNames[i].equals("Sanseido")){
+                return fieldContents[i];
+            }
+        }
+        return null;
+    }
+
     private ViewPager initViewPager(){
         ViewPager viewPager = findViewById(R.id.pager);
         try {
@@ -116,18 +140,31 @@ public class CardActivity extends AppCompatActivity {
         @Override
         @NonNull
         public Fragment getItem(int position) {
-            return mImageFragment; // TODO: add other fragments
+            switch (position){
+                case 0:
+                    return mImageFragment;
+                case 1:
+                    return mDefinitionFragment;
+                default:
+                    return null;
+            }
         }
 
         @Override
         public int getCount() {
-            return 1;
+            return 2;
         }
 
         @Override
         public CharSequence getPageTitle(int position) {
-            // TODO: add more fragment titles
-            return getString(R.string.images);
+            switch (position){
+                case 0:
+                    return "Images";
+                case 1:
+                    return "Definition";
+                default:
+                    return null;
+            }
         }
     }
 

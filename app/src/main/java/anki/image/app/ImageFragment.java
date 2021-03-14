@@ -41,12 +41,10 @@ public class ImageFragment extends Fragment {
 
     public static ImageFragment newInstance(String word, String appendix) {
         ImageFragment fragment = new ImageFragment();
-
         Bundle args = new Bundle();
         args.putString("word", word);
         args.putString("appendix", appendix);
         fragment.setArguments(args);
-
         return fragment;
     }
 
